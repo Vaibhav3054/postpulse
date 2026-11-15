@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dispatchDueScheduledPosts } from "@/lib/queue/publishing-queue";
 
-export async function POST(req: NextRequest) {
+async function handleDispatch(req: NextRequest) {
   try {
     // Secret verification for external cron triggers if configured
     const cronSecret = process.env.CRON_SECRET;
     if (cronSecret) {
       const authHeader = req.headers.get("authorization");
-      if (authHeader !== `Bearer ${cronSecret}`) {
+      const { searchParams } = new URL(req.url);
+      const queryKey = searchParams.get("key") || searchParams.get("secret");
+
+      const isAuthorized =
+        authHeader === `Bearer ${cronSecret}` ||
+        queryKey === cronSecret;
+
+      if (!isAuthorized) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
     }
@@ -18,4 +25,12 @@ export async function POST(req: NextRequest) {
     const error = err as Error;
     return NextResponse.json({ error: error.message || "Dispatch failed" }, { status: 500 });
   }
+}
+
+export async function POST(req: NextRequest) {
+  return handleDispatch(req);
+}
+
+export async function GET(req: NextRequest) {
+  return handleDispatch(req);
 }
