@@ -123,7 +123,7 @@ export interface DBActivityLog {
 
 // Initial demo user: demo@postpulse.io / password123
 // bcrypt hash for "password123":
-const DEMO_PASSWORD_HASH = "$2b$10$3euPcmQZ5V2kK3P9C2L67OXnN3gAupCq1QY7kL.d.qXF9wD5tB3k2";
+const DEMO_PASSWORD_HASH = "$2b$10$YQt.xOAbGCLP8bTD8FXdGue8QNR/6LOa3NqOMdQ9ocKSmMG313QF6";
 
 const demoUserId = "usr_demo_1001";
 const workspacePersonalId = "ws_personal_101";
