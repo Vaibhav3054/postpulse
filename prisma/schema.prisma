@@ -1,0 +1,240 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum SystemRole {
+  USER
+  SUPERADMIN
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum SocialPlatform {
+  INSTAGRAM
+  FACEBOOK
+  YOUTUBE
+  LINKEDIN
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  PARTIALLY_PUBLISHED
+  FAILED
+}
+
+enum TargetPublishStatus {
+  PENDING
+  PUBLISHING
+  PUBLISHED
+  FAILED
+}
+
+model User {
+  id              String            @id @default(uuid())
+  email           String            @unique
+  passwordHash    String
+  fullName        String?
+  avatarUrl       String?
+  systemRole      SystemRole        @default(USER)
+  emailVerified   Boolean           @default(false)
+  workspaces      WorkspaceMember[]
+  ownedWorkspaces Workspace[]       @relation("WorkspaceOwner")
+  createdPosts    Post[]
+  activityLogs    ActivityLog[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
+model SubscriptionPlan {
+  id                        String      @id @default(uuid())
+  name                      String
+  code                      String      @unique // 'free', 'creator', 'business', 'agency'
+  maxWorkspaces             Int         @default(1)
+  maxSocialAccounts         Int         @default(3)
+  maxScheduledPostsPerMonth Int         @default(15)
+  maxStorageMb              Int         @default(500)
+  maxTeamMembers            Int         @default(1)
+  priceCents                Int         @default(0)
+  isActive                  Boolean     @default(true)
+  workspaces                Workspace[]
+  createdAt                 DateTime    @default(now())
+}
+
+model Workspace {
+  id             String            @id @default(uuid())
+  name           String
+  slug           String            @unique
+  logoUrl        String?
+  ownerId        String
+  owner          User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  planId         String
+  plan           SubscriptionPlan  @relation(fields: [planId], references: [id])
+  members        WorkspaceMember[]
+  socialAccounts SocialAccount[]
+  mediaAssets    MediaAsset[]
+  posts          Post[]
+  activityLogs   ActivityLog[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([slug])
+}
+
+model WorkspaceMember {
+  id          String        @id @default(uuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(MEMBER)
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt    DateTime      @default(now())
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model SocialAccount {
+  id                    String                @id @default(uuid())
+  workspaceId           String
+  platform              SocialPlatform
+  platformAccountId     String
+  platformUsername      String?
+  platformDisplayName   String?
+  avatarUrl             String?
+  accessTokenEncrypted  String
+  refreshTokenEncrypted String?
+  tokenExpiresAt        DateTime?
+  scopes                String[]              @default([])
+  metadata              Json                  @default("{}")
+  isActive              Boolean               @default(true)
+  workspace             Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  targets               PostPlatformTarget[]
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@unique([workspaceId, platform, platformAccountId])
+  @@index([workspaceId, platform])
+}
+
+model MediaAsset {
+  id              String      @id @default(uuid())
+  workspaceId     String
+  fileName        String
+  storageKey      String      @unique
+  publicUrl       String
+  mediaType       MediaType
+  mimeType        String
+  fileSizeBytes   BigInt
+  width           Int?
+  height          Int?
+  durationSeconds Int?
+  isTemporary     Boolean     @default(false)
+  workspace       Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  posts           PostMedia[]
+  createdAt       DateTime    @default(now())
+
+  @@index([workspaceId])
+}
+
+model Post {
+  id              String               @id @default(uuid())
+  workspaceId     String
+  createdByUserId String?
+  status          PostStatus           @default(DRAFT)
+  commonCaption   String?              @db.Text
+  scheduledAt     DateTime?
+  timezone        String               @default("UTC")
+  publishedAt     DateTime?
+  workspace       Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdByUser   User?                @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  media           PostMedia[]
+  platformTargets PostPlatformTarget[]
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([workspaceId, status])
+  @@index([status, scheduledAt])
+}
+
+model PostMedia {
+  postId       String
+  mediaAssetId String
+  displayOrder Int        @default(0)
+  post         Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  mediaAsset   MediaAsset @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
+
+  @@id([postId, mediaAssetId])
+}
+
+model PostPlatformTarget {
+  id              String               @id @default(uuid())
+  postId          String
+  socialAccountId String
+  platform        SocialPlatform
+  customCaption   String?              @db.Text
+  platformPayload Json                 @default("{}")
+  status          TargetPublishStatus  @default(PENDING)
+  externalPostId  String?
+  externalPostUrl String?
+  errorMessage    String?
+  errorDetails    Json?
+  publishedAt     DateTime?
+  idempotencyKey  String               @unique
+  post            Post                 @relation(fields: [postId], references: [id], onDelete: Cascade)
+  socialAccount   SocialAccount        @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+  publishAttempts PublishAttempt[]
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([postId])
+  @@index([socialAccountId])
+}
+
+model PublishAttempt {
+  id                   String              @id @default(uuid())
+  postPlatformTargetId String
+  attemptNumber        Int                 @default(1)
+  status               TargetPublishStatus
+  requestSummary       Json?
+  responseSummary      Json?
+  errorCode            String?
+  errorMessage         String?
+  executedAt           DateTime            @default(now())
+  durationMs           Int?
+  target               PostPlatformTarget  @relation(fields: [postPlatformTargetId], references: [id], onDelete: Cascade)
+
+  @@index([postPlatformTargetId])
+}
+
+model ActivityLog {
+  id          String    @id @default(uuid())
+  workspaceId String
+  userId      String?
+  action      String
+  entityType  String
+  entityId    String?
+  metadata    Json      @default("{}")
+  ipAddress   String?
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId, createdAt])
+}
