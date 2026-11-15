@@ -171,9 +171,9 @@ export function WorkspaceSettingsView({
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {Object.values(SUBSCRIPTION_PLANS).map((plan) => {
-            const isCurrent = plan.code === activePlanCode;
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[SUBSCRIPTION_PLANS.free, SUBSCRIPTION_PLANS.pro, SUBSCRIPTION_PLANS.agency].map((plan) => {
+            const isCurrent = plan.code === activePlanCode || (plan.code === "pro" && activePlanCode === "creator");
 
             return (
               <div
@@ -198,7 +198,7 @@ export function WorkspaceSettingsView({
 
                   <div className="flex items-baseline gap-1">
                     <span className="text-2xl font-bold text-zinc-900 dark:text-white">
-                      ${plan.priceMonthly}
+                      ₹{plan.priceMonthly}
                     </span>
                     <span className="text-xs text-zinc-400">/month</span>
                   </div>
@@ -223,7 +223,11 @@ export function WorkspaceSettingsView({
                       : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
                   }`}
                 >
-                  {isCurrent ? "Current Plan" : "Switch to Tier"}
+                  {isCurrent
+                    ? "Current Plan"
+                    : isSwitchingPlan
+                    ? "Updating..."
+                    : `Switch to ${plan.name}`}
                 </button>
               </div>
             );

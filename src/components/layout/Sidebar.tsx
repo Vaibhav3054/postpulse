@@ -16,6 +16,7 @@ import {
   Sparkles,
   LogOut,
   Building2,
+  X,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -39,6 +40,8 @@ interface SidebarProps {
   workspaces: WorkspaceInfo[];
   user: UserInfo;
   onOpenCreateWorkspace: () => void;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export function Sidebar({
@@ -46,6 +49,8 @@ export function Sidebar({
   workspaces,
   user,
   onOpenCreateWorkspace,
+  isMobileOpen = false,
+  onCloseMobile,
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -109,20 +114,52 @@ export function Sidebar({
   };
 
   return (
-    <aside className="w-64 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 flex flex-col h-screen select-none shrink-0">
-      {/* Brand & Workspace Switcher Header */}
-      <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
-        <div className="flex items-center gap-2 mb-3 px-1">
-          <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm tracking-tight shadow-sm shadow-indigo-600/30">
-            P
+    <>
+      {/* Mobile Backdrop Overlay */}
+      {isMobileOpen && (
+        <div
+          onClick={onCloseMobile}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 md:hidden animate-fade-in"
+        />
+      )}
+
+      {/* Sidebar Navigation */}
+      <aside
+        className={`
+          bg-white dark:bg-zinc-950 flex flex-col h-screen select-none shrink-0 border-r border-zinc-200 dark:border-zinc-800 transition-transform duration-300 ease-in-out
+          ${
+            isMobileOpen
+              ? "fixed inset-y-0 left-0 z-50 w-72 shadow-2xl translate-x-0"
+              : "-translate-x-full md:translate-x-0 hidden md:flex md:w-64"
+          }
+        `}
+      >
+        {/* Brand & Workspace Switcher Header */}
+        <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
+          <div className="flex items-center justify-between mb-3 px-1">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm tracking-tight shadow-sm shadow-indigo-600/30">
+                P
+              </div>
+              <span className="font-semibold text-zinc-900 dark:text-white tracking-tight text-base">
+                PostPulse
+              </span>
+              <span className="text-[10px] font-medium uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-1.5 py-0.5 rounded">
+                v1.0
+              </span>
+            </div>
+
+            {/* Mobile Close Button */}
+            {onCloseMobile && (
+              <button
+                type="button"
+                onClick={onCloseMobile}
+                className="md:hidden p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
-          <span className="font-semibold text-zinc-900 dark:text-white tracking-tight text-base">
-            PostPulse
-          </span>
-          <span className="text-[10px] font-medium uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-1.5 py-0.5 rounded ml-auto">
-            v1.0
-          </span>
-        </div>
 
         {/* Workspace Dropdown Trigger */}
         <div className="relative">
@@ -280,5 +317,6 @@ export function Sidebar({
         )}
       </div>
     </aside>
+  </>
   );
 }

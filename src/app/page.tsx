@@ -130,10 +130,10 @@ export default function LandingPage() {
         <div className="w-full pt-16 space-y-6">
           <div>
             <h2 className="text-2xl font-bold text-white tracking-tight">
-              Simple, transparent pricing
+              Simple, creator-friendly pricing in ₹ INR
             </h2>
             <p className="text-xs text-zinc-400 mt-1">
-              Start completely free and scale as your content schedule grows.
+              Start completely free and scale as your social audience grows. No surprise charges.
             </p>
           </div>
 
@@ -142,8 +142,8 @@ export default function LandingPage() {
             <div className="p-6 rounded-2xl border border-zinc-800 bg-zinc-900/50 flex flex-col justify-between space-y-6">
               <div className="space-y-4">
                 <div>
-                  <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Free</div>
-                  <div className="text-3xl font-extrabold text-white mt-1">$0 <span className="text-xs font-normal text-zinc-500">/ month</span></div>
+                  <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Free Starter</div>
+                  <div className="text-3xl font-extrabold text-white mt-1">₹0 <span className="text-xs font-normal text-zinc-500">/ month</span></div>
                   <p className="text-xs text-zinc-400 mt-1">Perfect for solo creators getting started.</p>
                 </div>
                 <div className="space-y-2 text-xs text-zinc-300">
@@ -164,18 +164,19 @@ export default function LandingPage() {
             {/* Pro Plan */}
             <div className="p-6 rounded-2xl border border-indigo-500/50 bg-indigo-950/20 flex flex-col justify-between space-y-6 relative shadow-lg shadow-indigo-500/10">
               <div className="absolute -top-3 right-6 px-2.5 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider">
-                Popular
+                Popular in India
               </div>
               <div className="space-y-4">
                 <div>
                   <div className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">Pro Creator</div>
-                  <div className="text-3xl font-extrabold text-white mt-1">$19 <span className="text-xs font-normal text-zinc-500">/ month</span></div>
+                  <div className="text-3xl font-extrabold text-white mt-1">₹799 <span className="text-xs font-normal text-zinc-500">/ month</span></div>
                   <p className="text-xs text-zinc-400 mt-1">For active creators and fast-growing brands.</p>
                 </div>
                 <div className="space-y-2 text-xs text-zinc-300">
                   <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" /> Up to 10 Social Channels</div>
                   <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" /> Unlimited Scheduled Posts</div>
                   <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" /> 5 GB High-Speed Media Storage</div>
+                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" /> IST Peak Hours Quick Scheduling</div>
                   <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" /> Team Collaboration (3 seats)</div>
                 </div>
               </div>
@@ -192,21 +193,21 @@ export default function LandingPage() {
               <div className="space-y-4">
                 <div>
                   <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Agency</div>
-                  <div className="text-3xl font-extrabold text-white mt-1">$49 <span className="text-xs font-normal text-zinc-500">/ month</span></div>
+                  <div className="text-3xl font-extrabold text-white mt-1">₹2,999 <span className="text-xs font-normal text-zinc-500">/ month</span></div>
                   <p className="text-xs text-zinc-400 mt-1">For digital agencies managing multiple clients.</p>
                 </div>
                 <div className="space-y-2 text-xs text-zinc-300">
-                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Unlimited Workspaces</div>
+                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Unlimited Workspaces for Clients</div>
                   <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Up to 50 Social Channels</div>
                   <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> 25 GB Cloud Asset Vault</div>
-                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Advanced Audit Logs & Analytics</div>
+                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Priority Worker Queue & Audit Logs</div>
                 </div>
               </div>
               <Link
                 href="/signup"
                 className="w-full py-2.5 px-4 text-xs font-semibold text-center rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white transition-colors"
               >
-                Contact for Agency
+                Get Agency Plan
               </Link>
             </div>
           </div>

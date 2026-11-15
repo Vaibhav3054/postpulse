@@ -15,6 +15,8 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
+  PenSquare,
+  Eye,
 } from "lucide-react";
 import { AccountSelector, ConnectedAccountItem } from "./AccountSelector";
 import { LiveMockupPreview } from "./LiveMockupPreview";
@@ -64,10 +66,9 @@ export function ContentComposer({
   };
 
   const [scheduledDate, setScheduledDate] = useState(getDefaultScheduledDate());
-  const [scheduledTime, setScheduledTime] = useState("18:30");
-  const [timezone, setTimezone] = useState(
-    Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"
-  );
+  const [scheduledTime, setScheduledTime] = useState("19:00"); // 7:00 PM IST (Prime Indian Reels & Social time)
+  const [timezone, setTimezone] = useState("Asia/Kolkata"); // Default India Standard Time
+  const [mobileTab, setMobileTab] = useState<"editor" | "preview">("editor");
 
   // Preview tab state
   const [activePreviewPlatform, setActivePreviewPlatform] = useState<SocialPlatformType>(
@@ -288,8 +289,40 @@ export function ContentComposer({
         </div>
       )}
 
+      {/* Mobile Tab Switcher (Phone-optimized toggle) */}
+      <div className="lg:hidden flex items-center border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-2 gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={() => setMobileTab("editor")}
+          className={`flex-1 py-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+            mobileTab === "editor"
+              ? "bg-indigo-600 text-white shadow-sm"
+              : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+          }`}
+        >
+          <PenSquare className="w-3.5 h-3.5" />
+          <span>Write Post</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab("preview")}
+          className={`flex-1 py-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+            mobileTab === "preview"
+              ? "bg-indigo-600 text-white shadow-sm"
+              : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+          }`}
+        >
+          <Eye className="w-3.5 h-3.5" />
+          <span>Live Mockup Preview</span>
+        </button>
+      </div>
+
       {/* LEFT PANE: Editor & Customization Controls */}
-      <div className="w-full lg:w-3/5 h-full overflow-y-auto p-6 border-r border-zinc-200 dark:border-zinc-800 space-y-6">
+      <div
+        className={`w-full lg:w-3/5 h-full overflow-y-auto p-4 sm:p-6 border-r border-zinc-200 dark:border-zinc-800 space-y-6 ${
+          mobileTab === "editor" ? "block" : "hidden lg:block"
+        }`}
+      >
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Target Accounts Selection */}
           <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30">
@@ -546,6 +579,39 @@ export function ContentComposer({
                     <option value="Europe/London">Europe/London (GMT)</option>
                   </select>
                 </div>
+
+                {/* Indian Audience Peak Engagement Presets */}
+                <div className="sm:col-span-3 pt-2">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+                      ⚡ Indian Audience Peak Engagement Presets:
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { label: "🌅 09:30 AM (LinkedIn/Morning)", time: "09:30" },
+                      { label: "☀️ 01:30 PM (Lunch Shorts)", time: "13:30" },
+                      { label: "🌆 07:00 PM (Prime Reels)", time: "19:00" },
+                      { label: "🌙 09:00 PM (YouTube Night)", time: "21:00" },
+                    ].map((preset) => (
+                      <button
+                        key={preset.time}
+                        type="button"
+                        onClick={() => {
+                          setScheduledTime(preset.time);
+                          setTimezone("Asia/Kolkata");
+                        }}
+                        className={`text-[11px] px-2.5 py-1 rounded-md border transition-all cursor-pointer ${
+                          scheduledTime === preset.time && timezone === "Asia/Kolkata"
+                            ? "bg-indigo-600 text-white border-indigo-600 font-semibold shadow-sm"
+                            : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-indigo-400"
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -562,7 +628,7 @@ export function ContentComposer({
             <button
               type="submit"
               disabled={isSubmitting || !commonCaption.trim()}
-              className="flex items-center gap-2 px-6 py-2.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg shadow-sm shadow-indigo-600/30 transition-all"
+              className="flex items-center gap-2 px-6 py-2.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg shadow-sm shadow-indigo-600/30 transition-all cursor-pointer"
             >
               {isSubmitting ? (
                 "Processing..."
@@ -588,7 +654,11 @@ export function ContentComposer({
       </div>
 
       {/* RIGHT PANE: Live Interactive Mockup Previews */}
-      <div className="w-full lg:w-2/5 h-full p-6 bg-zinc-50/50 dark:bg-zinc-950/30">
+      <div
+        className={`w-full lg:w-2/5 h-full p-4 sm:p-6 bg-zinc-50/50 dark:bg-zinc-950/30 overflow-y-auto ${
+          mobileTab === "preview" ? "block" : "hidden lg:block"
+        }`}
+      >
         <LiveMockupPreview
           platform={activePreviewPlatform}
           availablePlatforms={availablePlatforms}
