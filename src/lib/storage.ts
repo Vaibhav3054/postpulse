@@ -1,9 +1,9 @@
 import path from "path";
 import fs from "fs";
 
-const SUPABASE_URL = process.env.SUPABASE_URL || "https://hnadzkwmadcpdqzmjmet.supabase.co";
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const STORAGE_BUCKET = process.env.STORAGE_BUCKET || "postpulse-assets";
+const SUPABASE_URL = process.env.SUPABASE_URL || "";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const STORAGE_BUCKET = process.env.STORAGE_BUCKET || "";
 
 const isSupabaseStorageConfigured = Boolean(
   SUPABASE_URL &&

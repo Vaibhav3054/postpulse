@@ -8,7 +8,10 @@ const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16;
 
 function getEncryptionKey(): Buffer {
-  const secret = process.env.TOKEN_ENCRYPTION_SECRET || "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+  const secret = process.env.TOKEN_ENCRYPTION_SECRET;
+  if (!secret) {
+    throw new Error("TOKEN_ENCRYPTION_SECRET environment variable is required");
+  }
   return Buffer.from(secret, "hex");
 }
 
