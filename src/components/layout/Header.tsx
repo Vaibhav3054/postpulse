@@ -47,7 +47,7 @@ export function Header({
         )}
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5">
         {/* Worker Dispatch Trigger for testing */}
         <button
           onClick={handleManualDispatch}
@@ -55,12 +55,8 @@ export function Header({
           title="Manually trigger background publishing worker to scan and publish due posts"
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-800 transition-colors"
         >
-          {isDispatching ? (
-            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <Play className="w-3.5 h-3.5 text-indigo-500 fill-indigo-500" />
-          )}
-          <span>Run Worker Tick</span>
+          <RefreshCw className={`w-3.5 h-3.5 text-indigo-500 ${isDispatching ? "animate-spin" : ""}`} />
+          <span>Sync Due Posts</span>
         </button>
 
         {/* Quick Create CTA if not on composer page */}
@@ -70,7 +66,7 @@ export function Header({
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm shadow-indigo-600/30 transition-colors"
           >
             <PenSquare className="w-3.5 h-3.5" />
-            <span>Create Post</span>
+            <span>New Post</span>
           </a>
         )}
       </div>

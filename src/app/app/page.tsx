@@ -12,8 +12,15 @@ export default async function AppRootRedirect() {
 
   const workspaces = await db.workspaces.listForUser(session.id);
   if (workspaces.length === 0) {
-    // Fallback if no workspaces exist yet
-    redirect("/login");
+    // Automatically create a default starter workspace if none exists
+    const defaultName = `${session.fullName || session.email.split("@")[0]}'s Brand`;
+    const defaultSlug = defaultName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "workspace";
+    const newWs = await db.workspaces.create({
+      name: defaultName,
+      slug: defaultSlug,
+      ownerId: session.id,
+    });
+    redirect(`/app/${newWs.slug}/dashboard`);
   }
 
   const primaryWorkspace = workspaces[0];

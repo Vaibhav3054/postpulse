@@ -4,7 +4,7 @@ import { hashPassword, signSessionToken, getSessionCookieOptions } from "@/lib/a
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, fullName } = await req.json();
+    const { email, password, fullName, workspaceName } = await req.json();
 
     if (!email || !password) {
       return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
@@ -14,16 +14,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Password must be at least 6 characters." }, { status: 400 });
     }
 
-    const existingUser = await db.users.findByEmail(email);
+    const normalizedEmail = email.trim().toLowerCase();
+    const existingUser = await db.users.findByEmail(normalizedEmail);
     if (existingUser) {
       return NextResponse.json({ error: "An account with this email already exists." }, { status: 400 });
     }
 
     const passwordHash = await hashPassword(password);
+    const userDisplayName = fullName?.trim() || normalizedEmail.split("@")[0] || "Creator";
+
     const newUser = await db.users.create({
-      email,
+      email: normalizedEmail,
       passwordHash,
-      fullName: fullName || "Creator",
+      fullName: userDisplayName,
+    });
+
+    // Automatically create the user's primary starter workspace
+    const rawWsName = workspaceName?.trim() || `${userDisplayName}'s Brand`;
+    const baseSlug = rawWsName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "workspace";
+
+    const newWorkspace = await db.workspaces.create({
+      name: rawWsName,
+      slug: baseSlug,
+      ownerId: newUser.id,
     });
 
     const sessionUser = {
@@ -36,7 +52,10 @@ export async function POST(req: NextRequest) {
     const token = signSessionToken(sessionUser);
     const cookieOptions = getSessionCookieOptions();
 
-    const response = NextResponse.json({ user: sessionUser });
+    const response = NextResponse.json({
+      user: sessionUser,
+      workspaceSlug: newWorkspace.slug,
+    });
     response.cookies.set(cookieOptions.name, token, cookieOptions);
 
     return response;
