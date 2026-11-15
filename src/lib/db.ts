@@ -1,27 +1,36 @@
-import {
-  mockStore,
-  DBUser,
-  DBWorkspace,
-  DBWorkspaceMember,
-  DBSocialAccount,
-  DBMediaAsset,
-  DBPost,
-  DBPostPlatformTarget,
-  DBPublishAttempt,
-  DBActivityLog,
-} from "./mock-data";
+import { prisma } from "./prisma";
 import { SUBSCRIPTION_PLANS, QuotaExceededError } from "./quota";
+import {
+  SocialPlatform,
+  MediaType,
+  PostStatus,
+  TargetPublishStatus,
+  WorkspaceRole,
+  SystemRole,
+} from "@prisma/client";
 
 export const db = {
   users: {
-    async findByEmail(email: string): Promise<DBUser | null> {
-      const user = mockStore.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
-      return user || null;
+    async findByEmail(email: string) {
+      try {
+        return await prisma.user.findUnique({
+          where: { email: email.toLowerCase() },
+        });
+      } catch (err) {
+        console.error("Prisma findByEmail error:", err);
+        return null;
+      }
     },
 
-    async findById(id: string): Promise<DBUser | null> {
-      const user = mockStore.users.find((u) => u.id === id);
-      return user || null;
+    async findById(id: string) {
+      try {
+        return await prisma.user.findUnique({
+          where: { id },
+        });
+      } catch (err) {
+        console.error("Prisma findById error:", err);
+        return null;
+      }
     },
 
     async create(data: {
@@ -29,218 +38,288 @@ export const db = {
       passwordHash: string;
       fullName?: string;
       avatarUrl?: string;
-    }): Promise<DBUser> {
-      const newUser: DBUser = {
-        id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        email: data.email.toLowerCase(),
-        passwordHash: data.passwordHash,
-        fullName: data.fullName || "User",
-        avatarUrl: data.avatarUrl || "",
-        systemRole: "USER",
-        createdAt: new Date(),
-      };
-      mockStore.users.push(newUser);
-
-      // Auto-create initial default personal workspace
-      const workspaceSlug = newUser.fullName.toLowerCase().replace(/[^a-z0-9]/g, "-") || "my-brand";
-      const newWs: DBWorkspace = {
-        id: `ws_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        name: `${newUser.fullName}'s Brand`,
-        slug: `${workspaceSlug}-${Math.random().toString(36).substring(2, 5)}`,
-        ownerId: newUser.id,
-        planId: "free",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      mockStore.workspaces.push(newWs);
-
-      mockStore.members.push({
-        id: `mem_${Date.now()}`,
-        workspaceId: newWs.id,
-        userId: newUser.id,
-        role: "OWNER",
-        joinedAt: new Date(),
+    }) {
+      const freePlan = await prisma.subscriptionPlan.findUnique({
+        where: { code: "free" },
       });
 
-      return newUser;
+      const user = await prisma.user.create({
+        data: {
+          email: data.email.toLowerCase(),
+          passwordHash: data.passwordHash,
+          fullName: data.fullName || "Creator",
+          avatarUrl: data.avatarUrl || "",
+          systemRole: SystemRole.USER,
+        },
+      });
+
+      // Auto-create initial default personal workspace
+      const baseSlug = (data.fullName || "brand")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "-");
+      const uniqueSlug = `${baseSlug}-${Math.random().toString(36).substring(2, 6)}`;
+
+      const workspace = await prisma.workspace.create({
+        data: {
+          name: `${data.fullName || "My"} Brand`,
+          slug: uniqueSlug,
+          ownerId: user.id,
+          planId: freePlan ? freePlan.id : "",
+          members: {
+            create: {
+              userId: user.id,
+              role: WorkspaceRole.OWNER,
+            },
+          },
+        },
+      });
+
+      return user;
     },
   },
 
   workspaces: {
-    async listForUser(userId: string): Promise<(DBWorkspace & { role: string; planName: string })[]> {
-      const memberships = mockStore.members.filter((m) => m.userId === userId);
-      const wsIds = memberships.map((m) => m.workspaceId);
-      
-      return mockStore.workspaces
-        .filter((w) => wsIds.includes(w.id))
-        .map((w) => {
-          const mem = memberships.find((m) => m.workspaceId === w.id);
-          const plan = SUBSCRIPTION_PLANS[w.planId] || SUBSCRIPTION_PLANS.free;
-          return {
-            ...w,
-            role: mem?.role || "MEMBER",
-            planName: plan.name,
-          };
-        });
+    async listForUser(userId: string) {
+      const memberships = await prisma.workspaceMember.findMany({
+        where: { userId },
+        include: {
+          workspace: {
+            include: {
+              plan: true,
+            },
+          },
+        },
+      });
+
+      return memberships.map((m) => ({
+        id: m.workspace.id,
+        name: m.workspace.name,
+        slug: m.workspace.slug,
+        logoUrl: m.workspace.logoUrl,
+        ownerId: m.workspace.ownerId,
+        planId: m.workspace.plan.code,
+        planName: m.workspace.plan.name,
+        role: m.role,
+        createdAt: m.workspace.createdAt,
+        updatedAt: m.workspace.updatedAt,
+      }));
     },
 
-    async findBySlug(slug: string): Promise<DBWorkspace | null> {
-      const ws = mockStore.workspaces.find((w) => w.slug === slug);
-      return ws || null;
+    async findBySlug(slug: string) {
+      return prisma.workspace.findUnique({
+        where: { slug },
+        include: {
+          plan: true,
+        },
+      });
     },
 
-    async findById(id: string): Promise<DBWorkspace | null> {
-      const ws = mockStore.workspaces.find((w) => w.id === id);
-      return ws || null;
+    async findById(id: string) {
+      return prisma.workspace.findUnique({
+        where: { id },
+        include: {
+          plan: true,
+        },
+      });
     },
 
-    async checkMembership(workspaceId: string, userId: string): Promise<DBWorkspaceMember | null> {
-      const mem = mockStore.members.find(
-        (m) => m.workspaceId === workspaceId && m.userId === userId
-      );
-      return mem || null;
+    async checkMembership(workspaceId: string, userId: string) {
+      return prisma.workspaceMember.findUnique({
+        where: {
+          workspaceId_userId: {
+            workspaceId,
+            userId,
+          },
+        },
+      });
     },
 
-    async create(data: { name: string; slug: string; ownerId: string }): Promise<DBWorkspace> {
-      // Check user's plan limit for workspaces
-      const userWorkspaces = mockStore.workspaces.filter((w) => w.ownerId === data.ownerId);
-      // Determine highest plan user has
-      const currentCount = userWorkspaces.length;
-      if (currentCount >= 50) {
-        throw new QuotaExceededError("workspaces", 50, currentCount, "agency");
+    async create(data: { name: string; slug: string; ownerId: string }) {
+      const userWorkspaces = await prisma.workspace.count({
+        where: { ownerId: data.ownerId },
+      });
+
+      if (userWorkspaces >= 50) {
+        throw new QuotaExceededError("workspaces", 50, userWorkspaces, "agency");
       }
 
+      const freePlan = await prisma.subscriptionPlan.findUnique({
+        where: { code: "free" },
+      });
+
       let uniqueSlug = data.slug.toLowerCase().replace(/[^a-z0-9-]/g, "-");
-      if (mockStore.workspaces.some((w) => w.slug === uniqueSlug)) {
+      const existing = await prisma.workspace.findUnique({ where: { slug: uniqueSlug } });
+      if (existing) {
         uniqueSlug = `${uniqueSlug}-${Math.random().toString(36).substring(2, 6)}`;
       }
 
-      const newWs: DBWorkspace = {
-        id: `ws_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        name: data.name,
-        slug: uniqueSlug,
-        ownerId: data.ownerId,
-        planId: "free",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      mockStore.workspaces.push(newWs);
-
-      mockStore.members.push({
-        id: `mem_${Date.now()}`,
-        workspaceId: newWs.id,
-        userId: data.ownerId,
-        role: "OWNER",
-        joinedAt: new Date(),
+      return prisma.workspace.create({
+        data: {
+          name: data.name,
+          slug: uniqueSlug,
+          ownerId: data.ownerId,
+          planId: freePlan ? freePlan.id : "",
+          members: {
+            create: {
+              userId: data.ownerId,
+              role: WorkspaceRole.OWNER,
+            },
+          },
+        },
       });
-
-      return newWs;
     },
 
-    async update(id: string, data: { name?: string; slug?: string; planId?: string }): Promise<DBWorkspace> {
-      const idx = mockStore.workspaces.findIndex((w) => w.id === id);
-      if (idx === -1) throw new Error("Workspace not found");
-      
-      const updated = {
-        ...mockStore.workspaces[idx],
-        ...data,
-        updatedAt: new Date(),
-      };
-      mockStore.workspaces[idx] = updated;
-      return updated;
+    async update(id: string, data: { name?: string; slug?: string; planId?: string }) {
+      const updatePayload: Record<string, unknown> = {};
+      if (data.name) updatePayload.name = data.name;
+      if (data.slug) updatePayload.slug = data.slug;
+      if (data.planId) {
+        const plan = await prisma.subscriptionPlan.findUnique({ where: { code: data.planId } });
+        if (plan) updatePayload.planId = plan.id;
+      }
+
+      return prisma.workspace.update({
+        where: { id },
+        data: updatePayload,
+      });
     },
 
-    async delete(id: string): Promise<void> {
-      mockStore.workspaces = mockStore.workspaces.filter((w) => w.id !== id);
-      mockStore.members = mockStore.members.filter((m) => m.workspaceId !== id);
-      mockStore.socialAccounts = mockStore.socialAccounts.filter((s) => s.workspaceId !== id);
-      mockStore.posts = mockStore.posts.filter((p) => p.workspaceId !== id);
-      mockStore.mediaAssets = mockStore.mediaAssets.filter((m) => m.workspaceId !== id);
+    async delete(id: string) {
+      return prisma.workspace.delete({
+        where: { id },
+      });
     },
   },
 
   socialAccounts: {
-    async listForWorkspace(workspaceId: string): Promise<DBSocialAccount[]> {
-      return mockStore.socialAccounts.filter((s) => s.workspaceId === workspaceId && s.isActive);
-    },
-
-    async findById(id: string): Promise<DBSocialAccount | null> {
-      const acc = mockStore.socialAccounts.find((s) => s.id === id);
-      return acc || null;
-    },
-
-    async create(data: Omit<DBSocialAccount, "id" | "createdAt" | "updatedAt">): Promise<DBSocialAccount> {
-      const ws = await db.workspaces.findById(data.workspaceId);
-      const plan = SUBSCRIPTION_PLANS[ws?.planId || "free"];
-      const currentCount = mockStore.socialAccounts.filter(
-        (s) => s.workspaceId === data.workspaceId && s.isActive
-      ).length;
-
-      if (currentCount >= plan.maxSocialAccounts) {
-        throw new QuotaExceededError("social_accounts", plan.maxSocialAccounts, currentCount, plan.code);
-      }
-
-      // Check if this exact platform account is already connected to this workspace
-      const existingIdx = mockStore.socialAccounts.findIndex(
-        (s) =>
-          s.workspaceId === data.workspaceId &&
-          s.platform === data.platform &&
-          s.platformAccountId === data.platformAccountId
-      );
-
-      if (existingIdx !== -1) {
-        mockStore.socialAccounts[existingIdx] = {
-          ...mockStore.socialAccounts[existingIdx],
-          ...data,
+    async listForWorkspace(workspaceId: string) {
+      return prisma.socialAccount.findMany({
+        where: {
+          workspaceId,
           isActive: true,
-          updatedAt: new Date(),
-        };
-        return mockStore.socialAccounts[existingIdx];
-      }
-
-      const newAccount: DBSocialAccount = {
-        ...data,
-        id: `acc_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      mockStore.socialAccounts.push(newAccount);
-      return newAccount;
+        },
+        orderBy: { createdAt: "desc" },
+      });
     },
 
-    async disconnect(id: string): Promise<void> {
-      const acc = mockStore.socialAccounts.find((s) => s.id === id);
-      if (acc) {
-        acc.isActive = false;
-        acc.updatedAt = new Date();
+    async findById(id: string) {
+      return prisma.socialAccount.findUnique({
+        where: { id },
+      });
+    },
+
+    async create(data: {
+      workspaceId: string;
+      platform: SocialPlatform;
+      platformAccountId: string;
+      platformUsername?: string;
+      platformDisplayName?: string;
+      avatarUrl?: string;
+      accessTokenEncrypted: string;
+      refreshTokenEncrypted?: string;
+      tokenExpiresAt?: Date;
+      scopes?: string[];
+      metadata?: Record<string, unknown>;
+      isActive?: boolean;
+    }) {
+      const ws = await prisma.workspace.findUnique({
+        where: { id: data.workspaceId },
+        include: { plan: true },
+      });
+
+      const currentCount = await prisma.socialAccount.count({
+        where: { workspaceId: data.workspaceId, isActive: true },
+      });
+
+      const planLimit = ws?.plan?.maxSocialAccounts || 3;
+      if (currentCount >= planLimit) {
+        throw new QuotaExceededError(
+          "social_accounts",
+          planLimit,
+          currentCount,
+          ws?.plan?.code || "free"
+        );
       }
+
+      return prisma.socialAccount.upsert({
+        where: {
+          workspaceId_platform_platformAccountId: {
+            workspaceId: data.workspaceId,
+            platform: data.platform,
+            platformAccountId: data.platformAccountId,
+          },
+        },
+        update: {
+          ...data,
+          metadata: (data.metadata || {}) as any,
+          isActive: true,
+        },
+        create: {
+          ...data,
+          metadata: (data.metadata || {}) as any,
+          isActive: true,
+        },
+      });
+    },
+
+    async disconnect(id: string) {
+      return prisma.socialAccount.update({
+        where: { id },
+        data: { isActive: false },
+      });
     },
   },
 
   mediaAssets: {
-    async listForWorkspace(workspaceId: string): Promise<DBMediaAsset[]> {
-      return mockStore.mediaAssets
-        .filter((m) => m.workspaceId === workspaceId)
-        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    async listForWorkspace(workspaceId: string) {
+      const assets = await prisma.mediaAsset.findMany({
+        where: { workspaceId },
+        orderBy: { createdAt: "desc" },
+      });
+
+      return assets.map((a) => ({
+        ...a,
+        fileSizeBytes: Number(a.fileSizeBytes),
+      }));
     },
 
-    async findById(id: string): Promise<DBMediaAsset | null> {
-      const asset = mockStore.mediaAssets.find((m) => m.id === id);
-      return asset || null;
-    },
-
-    async create(data: Omit<DBMediaAsset, "id" | "createdAt">): Promise<DBMediaAsset> {
-      const newAsset: DBMediaAsset = {
-        ...data,
-        id: `med_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        createdAt: new Date(),
+    async findById(id: string) {
+      const a = await prisma.mediaAsset.findUnique({ where: { id } });
+      if (!a) return null;
+      return {
+        ...a,
+        fileSizeBytes: Number(a.fileSizeBytes),
       };
-      mockStore.mediaAssets.push(newAsset);
-      return newAsset;
     },
 
-    async delete(id: string): Promise<void> {
-      mockStore.mediaAssets = mockStore.mediaAssets.filter((m) => m.id !== id);
+    async create(data: {
+      workspaceId: string;
+      fileName: string;
+      storageKey: string;
+      publicUrl: string;
+      mediaType: MediaType;
+      mimeType: string;
+      fileSizeBytes: number;
+      width?: number;
+      height?: number;
+      durationSeconds?: number;
+      isTemporary?: boolean;
+    }) {
+      const asset = await prisma.mediaAsset.create({
+        data: {
+          ...data,
+          fileSizeBytes: BigInt(data.fileSizeBytes),
+        },
+      });
+
+      return {
+        ...asset,
+        fileSizeBytes: Number(asset.fileSizeBytes),
+      };
+    },
+
+    async delete(id: string) {
+      return prisma.mediaAsset.delete({ where: { id } });
     },
   },
 
@@ -248,43 +327,132 @@ export const db = {
     async listForWorkspace(
       workspaceId: string,
       options?: { status?: string; platform?: string }
-    ): Promise<(DBPost & { media: DBMediaAsset[] })[]> {
-      let filtered = mockStore.posts.filter((p) => p.workspaceId === workspaceId);
+    ) {
+      const where: any = { workspaceId };
 
       if (options?.status && options.status !== "ALL") {
-        filtered = filtered.filter((p) => p.status.toUpperCase() === options.status?.toUpperCase());
+        where.status = options.status as PostStatus;
       }
 
       if (options?.platform && options.platform !== "ALL") {
-        filtered = filtered.filter((p) =>
-          p.platformTargets.some(
-            (t) => t.platform.toUpperCase() === options.platform?.toUpperCase()
-          )
-        );
+        where.platformTargets = {
+          some: {
+            platform: options.platform as SocialPlatform,
+          },
+        };
       }
 
-      return filtered
-        .sort((a, b) => {
-          const dateA = a.scheduledAt || a.createdAt;
-          const dateB = b.scheduledAt || b.createdAt;
-          return dateB.getTime() - dateA.getTime();
-        })
-        .map((p) => {
-          const media = mockStore.mediaAssets.filter((m) => p.mediaAssetIds.includes(m.id));
-          return {
-            ...p,
-            media,
-          };
-        });
+      const posts = await prisma.post.findMany({
+        where,
+        include: {
+          media: {
+            include: {
+              mediaAsset: true,
+            },
+            orderBy: { displayOrder: "asc" },
+          },
+          platformTargets: {
+            include: {
+              socialAccount: true,
+            },
+          },
+        },
+        orderBy: [{ scheduledAt: "desc" }, { createdAt: "desc" }],
+      });
+
+      return posts.map((p) => ({
+        id: p.id,
+        workspaceId: p.workspaceId,
+        createdByUserId: p.createdByUserId || "",
+        status: p.status,
+        commonCaption: p.commonCaption || "",
+        scheduledAt: p.scheduledAt || undefined,
+        timezone: p.timezone,
+        publishedAt: p.publishedAt || undefined,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+        media: p.media.map((m) => ({
+          id: m.mediaAsset.id,
+          fileName: m.mediaAsset.fileName,
+          publicUrl: m.mediaAsset.publicUrl,
+          mediaType: m.mediaAsset.mediaType,
+          fileSizeBytes: Number(m.mediaAsset.fileSizeBytes),
+        })),
+        platformTargets: p.platformTargets.map((t) => ({
+          id: t.id,
+          postId: t.postId,
+          socialAccountId: t.socialAccountId,
+          platform: t.platform,
+          customCaption: t.customCaption || undefined,
+          platformPayload: (t.platformPayload as Record<string, unknown>) || {},
+          status: t.status,
+          externalPostId: t.externalPostId || undefined,
+          externalPostUrl: t.externalPostUrl || undefined,
+          errorMessage: t.errorMessage || undefined,
+          errorDetails: (t.errorDetails as Record<string, unknown>) || undefined,
+          publishedAt: t.publishedAt || undefined,
+          idempotencyKey: t.idempotencyKey,
+          createdAt: t.createdAt,
+          updatedAt: t.updatedAt,
+        })),
+      }));
     },
 
-    async findById(id: string): Promise<(DBPost & { media: DBMediaAsset[] }) | null> {
-      const post = mockStore.posts.find((p) => p.id === id);
-      if (!post) return null;
-      const media = mockStore.mediaAssets.filter((m) => post.mediaAssetIds.includes(m.id));
+    async findById(id: string) {
+      const p = await prisma.post.findUnique({
+        where: { id },
+        include: {
+          media: {
+            include: {
+              mediaAsset: true,
+            },
+            orderBy: { displayOrder: "asc" },
+          },
+          platformTargets: {
+            include: {
+              socialAccount: true,
+            },
+          },
+        },
+      });
+
+      if (!p) return null;
+
       return {
-        ...post,
-        media,
+        id: p.id,
+        workspaceId: p.workspaceId,
+        createdByUserId: p.createdByUserId || "",
+        status: p.status,
+        commonCaption: p.commonCaption || "",
+        scheduledAt: p.scheduledAt || undefined,
+        timezone: p.timezone,
+        publishedAt: p.publishedAt || undefined,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+        media: p.media.map((m) => ({
+          id: m.mediaAsset.id,
+          fileName: m.mediaAsset.fileName,
+          publicUrl: m.mediaAsset.publicUrl,
+          mediaType: m.mediaAsset.mediaType,
+          fileSizeBytes: Number(m.mediaAsset.fileSizeBytes),
+        })),
+        platformTargets: p.platformTargets.map((t) => ({
+          id: t.id,
+          postId: t.postId,
+          socialAccountId: t.socialAccountId,
+          platform: t.platform,
+          customCaption: t.customCaption || undefined,
+          platformPayload: (t.platformPayload as Record<string, unknown>) || {},
+          status: t.status,
+          externalPostId: t.externalPostId || undefined,
+          externalPostUrl: t.externalPostUrl || undefined,
+          errorMessage: t.errorMessage || undefined,
+          errorDetails: (t.errorDetails as Record<string, unknown>) || undefined,
+          publishedAt: t.publishedAt || undefined,
+          idempotencyKey: t.idempotencyKey,
+          createdAt: t.createdAt,
+          updatedAt: t.updatedAt,
+        })),
       };
     },
 
@@ -298,84 +466,125 @@ export const db = {
       mediaAssetIds?: string[];
       targets: {
         socialAccountId: string;
-        platform: "INSTAGRAM" | "FACEBOOK" | "YOUTUBE" | "LINKEDIN";
+        platform: SocialPlatform;
         customCaption?: string;
         platformPayload?: Record<string, unknown>;
       }[];
-    }): Promise<DBPost> {
-      const ws = await db.workspaces.findById(data.workspaceId);
-      const plan = SUBSCRIPTION_PLANS[ws?.planId || "free"];
+    }) {
+      const ws = await prisma.workspace.findUnique({
+        where: { id: data.workspaceId },
+        include: { plan: true },
+      });
 
       if (data.status === "SCHEDULED") {
-        const scheduledThisMonth = mockStore.posts.filter(
-          (p) => p.workspaceId === data.workspaceId && p.status === "SCHEDULED"
-        ).length;
-        if (scheduledThisMonth >= plan.maxScheduledPostsPerMonth) {
+        const scheduledCount = await prisma.post.count({
+          where: {
+            workspaceId: data.workspaceId,
+            status: PostStatus.SCHEDULED,
+          },
+        });
+        const maxLimit = ws?.plan?.maxScheduledPostsPerMonth || 15;
+        if (scheduledCount >= maxLimit) {
           throw new QuotaExceededError(
             "scheduled_posts",
-            plan.maxScheduledPostsPerMonth,
-            scheduledThisMonth,
-            plan.code
+            maxLimit,
+            scheduledCount,
+            ws?.plan?.code || "free"
           );
         }
       }
 
-      const postId = `post_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-      const platformTargets: DBPostPlatformTarget[] = data.targets.map((t) => ({
-        id: `target_${postId}_${t.socialAccountId}`,
-        postId,
-        socialAccountId: t.socialAccountId,
-        platform: t.platform,
-        customCaption: t.customCaption,
-        platformPayload: t.platformPayload || {},
-        status: data.status === "PUBLISHED" ? "PUBLISHED" : "PENDING",
-        publishedAt: data.status === "PUBLISHED" ? new Date() : undefined,
-        idempotencyKey: `${postId}_${t.socialAccountId}`,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }));
+      const post = await prisma.post.create({
+        data: {
+          workspaceId: data.workspaceId,
+          createdByUserId: data.createdByUserId,
+          status: data.status as PostStatus,
+          commonCaption: data.commonCaption,
+          scheduledAt: data.scheduledAt,
+          timezone: data.timezone || "UTC",
+          publishedAt: data.status === "PUBLISHED" ? new Date() : undefined,
+          media: {
+            create: (data.mediaAssetIds || []).map((assetId, idx) => ({
+              mediaAssetId: assetId,
+              displayOrder: idx,
+            })),
+          },
+          platformTargets: {
+            create: data.targets.map((t) => ({
+              socialAccountId: t.socialAccountId,
+              platform: t.platform,
+              customCaption: t.customCaption,
+              platformPayload: (t.platformPayload || {}) as any,
+              status:
+                data.status === "PUBLISHED"
+                  ? TargetPublishStatus.PUBLISHED
+                  : TargetPublishStatus.PENDING,
+              publishedAt: data.status === "PUBLISHED" ? new Date() : undefined,
+              idempotencyKey: `target_${Date.now()}_${t.socialAccountId}_${Math.random()
+                .toString(36)
+                .substring(2, 6)}`,
+            })),
+          },
+        },
+        include: {
+          platformTargets: true,
+          media: { include: { mediaAsset: true } },
+        },
+      });
 
-      const newPost: DBPost = {
-        id: postId,
-        workspaceId: data.workspaceId,
-        createdByUserId: data.createdByUserId,
-        status: data.status,
-        commonCaption: data.commonCaption,
-        scheduledAt: data.scheduledAt,
-        timezone: data.timezone || "UTC",
-        publishedAt: data.status === "PUBLISHED" ? new Date() : undefined,
+      return {
+        ...post,
         mediaAssetIds: data.mediaAssetIds || [],
-        platformTargets,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        media: post.media.map((m) => ({
+          id: m.mediaAsset.id,
+          fileName: m.mediaAsset.fileName,
+          publicUrl: m.mediaAsset.publicUrl,
+          mediaType: m.mediaAsset.mediaType,
+          fileSizeBytes: Number(m.mediaAsset.fileSizeBytes),
+        })),
       };
-
-      mockStore.posts.unshift(newPost);
-      return newPost;
     },
 
-    async update(id: string, data: Partial<DBPost>): Promise<DBPost> {
-      const idx = mockStore.posts.findIndex((p) => p.id === id);
-      if (idx === -1) throw new Error("Post not found");
-
-      const updated = {
-        ...mockStore.posts[idx],
-        ...data,
-        updatedAt: new Date(),
-      };
-      mockStore.posts[idx] = updated;
-      return updated;
+    async update(id: string, data: Partial<any>) {
+      return prisma.post.update({
+        where: { id },
+        data,
+      });
     },
 
-    async delete(id: string): Promise<void> {
-      mockStore.posts = mockStore.posts.filter((p) => p.id !== id);
+    async delete(id: string) {
+      return prisma.post.delete({ where: { id } });
     },
 
-    async findDuePosts(): Promise<DBPost[]> {
+    async findDuePosts() {
       const now = new Date();
-      return mockStore.posts.filter(
-        (p) => p.status === "SCHEDULED" && p.scheduledAt && new Date(p.scheduledAt) <= now
-      );
+      const posts = await prisma.post.findMany({
+        where: {
+          status: PostStatus.SCHEDULED,
+          scheduledAt: { lte: now },
+        },
+        include: {
+          media: { include: { mediaAsset: true } },
+          platformTargets: true,
+        },
+      });
+
+      return posts.map((p) => ({
+        ...p,
+        media: p.media.map((m) => ({
+          id: m.mediaAsset.id,
+          fileName: m.mediaAsset.fileName,
+          publicUrl: m.mediaAsset.publicUrl,
+          mediaType: m.mediaAsset.mediaType,
+          fileSizeBytes: Number(m.mediaAsset.fileSizeBytes),
+        })),
+        platformTargets: p.platformTargets.map((t) => ({
+          ...t,
+          customCaption: t.customCaption || undefined,
+          platformPayload: (t.platformPayload as Record<string, unknown>) || {},
+          errorDetails: (t.errorDetails as Record<string, unknown>) || undefined,
+        })),
+      }));
     },
 
     async updateTargetStatus(
@@ -387,68 +596,112 @@ export const db = {
         errorMessage?: string;
         errorDetails?: Record<string, unknown>;
       }
-    ): Promise<void> {
-      for (const post of mockStore.posts) {
-        const target = post.platformTargets.find((t) => t.id === targetId);
-        if (target) {
-          target.status = status;
-          target.publishedAt = status === "PUBLISHED" ? new Date() : undefined;
-          if (details?.externalPostId) target.externalPostId = details.externalPostId;
-          if (details?.externalPostUrl) target.externalPostUrl = details.externalPostUrl;
-          if (details?.errorMessage) target.errorMessage = details.errorMessage;
-          if (details?.errorDetails) target.errorDetails = details.errorDetails;
-          target.updatedAt = new Date();
+    ) {
+      const updatedTarget = await prisma.postPlatformTarget.update({
+        where: { id: targetId },
+        data: {
+          status: status as TargetPublishStatus,
+          publishedAt: status === "PUBLISHED" ? new Date() : undefined,
+          externalPostId: details?.externalPostId,
+          externalPostUrl: details?.externalPostUrl,
+          errorMessage: details?.errorMessage,
+          errorDetails: (details?.errorDetails || {}) as any,
+        },
+      });
 
-          // Re-aggregate post status
-          const allStatuses = post.platformTargets.map((t) => t.status);
-          const allPublished = allStatuses.every((s) => s === "PUBLISHED");
-          const anyPublished = allStatuses.some((s) => s === "PUBLISHED");
-          const anyFailed = allStatuses.some((s) => s === "FAILED");
+      // Recalculate post status
+      const allTargets = await prisma.postPlatformTarget.findMany({
+        where: { postId: updatedTarget.postId },
+      });
 
-          if (allPublished) {
-            post.status = "PUBLISHED";
-            post.publishedAt = new Date();
-          } else if (anyPublished && anyFailed) {
-            post.status = "PARTIALLY_PUBLISHED";
-          } else if (anyFailed) {
-            post.status = "FAILED";
-          }
-          post.updatedAt = new Date();
-          break;
-        }
+      const allPublished = allTargets.every((t) => t.status === TargetPublishStatus.PUBLISHED);
+      const anyPublished = allTargets.some((t) => t.status === TargetPublishStatus.PUBLISHED);
+      const anyFailed = allTargets.some((t) => t.status === TargetPublishStatus.FAILED);
+
+      let newPostStatus: PostStatus = PostStatus.PUBLISHING;
+      if (allPublished) {
+        newPostStatus = PostStatus.PUBLISHED;
+      } else if (anyPublished && anyFailed) {
+        newPostStatus = PostStatus.PARTIALLY_PUBLISHED;
+      } else if (anyFailed) {
+        newPostStatus = PostStatus.FAILED;
       }
+
+      await prisma.post.update({
+        where: { id: updatedTarget.postId },
+        data: {
+          status: newPostStatus,
+          publishedAt: newPostStatus === PostStatus.PUBLISHED ? new Date() : undefined,
+        },
+      });
     },
   },
 
   attempts: {
-    async record(data: Omit<DBPublishAttempt, "id" | "executedAt">): Promise<DBPublishAttempt> {
-      const attempt: DBPublishAttempt = {
-        ...data,
-        id: `att_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        executedAt: new Date(),
-      };
-      mockStore.attempts.push(attempt);
-      return attempt;
+    async record(data: {
+      postPlatformTargetId: string;
+      attemptNumber: number;
+      status: "PENDING" | "PUBLISHING" | "PUBLISHED" | "FAILED";
+      requestSummary?: Record<string, unknown>;
+      responseSummary?: Record<string, unknown>;
+      errorCode?: string;
+      errorMessage?: string;
+      errorDetails?: Record<string, unknown>;
+      durationMs?: number;
+    }) {
+      return prisma.publishAttempt.create({
+        data: {
+          postPlatformTargetId: data.postPlatformTargetId,
+          attemptNumber: data.attemptNumber,
+          status: data.status as TargetPublishStatus,
+          requestSummary: (data.requestSummary || {}) as any,
+          responseSummary: (data.responseSummary || {}) as any,
+          errorCode: data.errorCode,
+          errorMessage: data.errorMessage,
+          durationMs: data.durationMs,
+        },
+      });
     },
 
-    async listForTarget(targetId: string): Promise<DBPublishAttempt[]> {
-      return mockStore.attempts.filter((a) => a.postPlatformTargetId === targetId);
+    async listForTarget(targetId: string) {
+      return prisma.publishAttempt.findMany({
+        where: { postPlatformTargetId: targetId },
+        orderBy: { executedAt: "desc" },
+      });
     },
   },
 
   activity: {
-    async log(data: Omit<DBActivityLog, "id" | "createdAt">): Promise<void> {
-      mockStore.logs.unshift({
-        ...data,
-        id: `log_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        createdAt: new Date(),
-      });
+    async log(data: {
+      workspaceId: string;
+      userId?: string;
+      action: string;
+      entityType: string;
+      entityId?: string;
+      metadata?: Record<string, unknown>;
+    }) {
+      try {
+        await prisma.activityLog.create({
+          data: {
+            workspaceId: data.workspaceId,
+            userId: data.userId,
+            action: data.action,
+            entityType: data.entityType,
+            entityId: data.entityId,
+            metadata: (data.metadata || {}) as any,
+          },
+        });
+      } catch (err) {
+        console.error("Failed to write activity log:", err);
+      }
     },
 
-    async listForWorkspace(workspaceId: string, limit = 20): Promise<DBActivityLog[]> {
-      return mockStore.logs
-        .filter((l) => l.workspaceId === workspaceId)
-        .slice(0, limit);
+    async listForWorkspace(workspaceId: string, limit = 20) {
+      return prisma.activityLog.findMany({
+        where: { workspaceId },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+      });
     },
   },
 };

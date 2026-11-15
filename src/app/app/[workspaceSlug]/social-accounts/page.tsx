@@ -22,9 +22,9 @@ export default async function SocialAccountsPage({
     platformAccountId: a.platformAccountId,
     platformUsername: a.platformUsername || a.platformAccountId,
     platformDisplayName: a.platformDisplayName || a.platformUsername || a.platformAccountId,
-    avatarUrl: a.avatarUrl,
+    avatarUrl: a.avatarUrl || undefined,
     tokenExpiresAt: a.tokenExpiresAt?.toISOString(),
-    metadata: a.metadata,
+    metadata: (a.metadata as Record<string, unknown>) || undefined,
     isActive: a.isActive,
   }));
 

@@ -38,7 +38,7 @@ export default async function AnalyticsPage({
     action: l.action,
     entityType: l.entityType,
     createdAt: l.createdAt.toISOString(),
-    metadata: l.metadata,
+    metadata: (l.metadata as Record<string, unknown>) || undefined,
   }));
 
   return (

@@ -21,7 +21,7 @@ export default async function DashboardPage({
     platform: a.platform,
     platformUsername: a.platformUsername || a.platformAccountId,
     platformDisplayName: a.platformDisplayName || a.platformUsername || a.platformAccountId,
-    avatarUrl: a.avatarUrl,
+    avatarUrl: a.avatarUrl || undefined,
   }));
 
   // Format posts

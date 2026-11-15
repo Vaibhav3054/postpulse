@@ -20,7 +20,7 @@ export default async function ComposerPage({
     platform: a.platform,
     platformUsername: a.platformUsername || a.platformAccountId,
     platformDisplayName: a.platformDisplayName || a.platformUsername || a.platformAccountId,
-    avatarUrl: a.avatarUrl,
+    avatarUrl: a.avatarUrl || undefined,
   }));
 
   const formattedMedia = media.map((m) => ({

@@ -23,8 +23,8 @@ export default async function MediaPage({
     mediaType: m.mediaType,
     mimeType: m.mimeType,
     fileSizeBytes: m.fileSizeBytes,
-    width: m.width,
-    height: m.height,
+    width: m.width || undefined,
+    height: m.height || undefined,
     createdAt: m.createdAt.toISOString(),
   }));
 
