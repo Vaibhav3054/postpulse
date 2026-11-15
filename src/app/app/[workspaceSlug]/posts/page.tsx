@@ -28,6 +28,13 @@ export default async function PostsPage({
       status: t.status,
       externalPostUrl: t.externalPostUrl,
       errorMessage: t.errorMessage,
+      impressions: t.impressions,
+      likes: t.likes,
+      comments: t.comments,
+      shares: t.shares,
+      reach: t.reach,
+      clicks: t.clicks,
+      metricsUpdatedAt: t.metricsUpdatedAt?.toISOString(),
     })),
     createdAt: p.createdAt.toISOString(),
   }));
@@ -35,7 +42,11 @@ export default async function PostsPage({
   return (
     <>
       <Header title="Posts Management" workspaceSlug={workspace.slug} />
-      <PostsDashboard posts={formattedPosts} workspaceSlug={workspace.slug} />
+      <PostsDashboard
+        posts={formattedPosts}
+        workspaceSlug={workspace.slug}
+        workspaceName={workspace.name}
+      />
     </>
   );
 }

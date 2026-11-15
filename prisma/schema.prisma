@@ -198,6 +198,16 @@ model PostPlatformTarget {
   errorDetails    Json?
   publishedAt     DateTime?
   idempotencyKey  String               @unique
+
+  // Performance & Insights Metrics
+  impressions     Int                  @default(0)
+  likes           Int                  @default(0)
+  comments        Int                  @default(0)
+  shares          Int                  @default(0)
+  reach           Int                  @default(0)
+  clicks          Int                  @default(0)
+  metricsUpdatedAt DateTime?
+
   post            Post                 @relation(fields: [postId], references: [id], onDelete: Cascade)
   socialAccount   SocialAccount        @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
   publishAttempts PublishAttempt[]

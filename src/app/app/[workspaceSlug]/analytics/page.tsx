@@ -29,6 +29,13 @@ export default async function AnalyticsPage({
       status: t.status,
       externalPostUrl: t.externalPostUrl,
       errorMessage: t.errorMessage,
+      impressions: t.impressions,
+      likes: t.likes,
+      comments: t.comments,
+      shares: t.shares,
+      reach: t.reach,
+      clicks: t.clicks,
+      metricsUpdatedAt: t.metricsUpdatedAt?.toISOString(),
     })),
     createdAt: p.createdAt.toISOString(),
   }));
