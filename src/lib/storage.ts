@@ -1,31 +1,15 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import path from "path";
 import fs from "fs";
 
-const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
-const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
-const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
-const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || "postpulse-assets";
-const R2_PUBLIC_DOMAIN = process.env.R2_PUBLIC_DOMAIN;
+const SUPABASE_URL = process.env.SUPABASE_URL || "https://hnadzkwmadcpdqzmjmet.supabase.co";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const STORAGE_BUCKET = process.env.STORAGE_BUCKET || "postpulse-assets";
 
-const isR2Configured = Boolean(
-  R2_ACCOUNT_ID &&
-  R2_ACCESS_KEY_ID &&
-  R2_SECRET_ACCESS_KEY &&
-  R2_ACCESS_KEY_ID !== "local_dev_key"
+const isSupabaseStorageConfigured = Boolean(
+  SUPABASE_URL &&
+  SUPABASE_SERVICE_ROLE_KEY &&
+  SUPABASE_SERVICE_ROLE_KEY !== "your_service_role_key"
 );
-
-export const s3Client = isR2Configured
-  ? new S3Client({
-      region: "auto",
-      endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-      credentials: {
-        accessKeyId: R2_ACCESS_KEY_ID!,
-        secretAccessKey: R2_SECRET_ACCESS_KEY!,
-      },
-    })
-  : null;
 
 export interface PresignedUploadResponse {
   uploadUrl: string;
@@ -35,7 +19,7 @@ export interface PresignedUploadResponse {
 }
 
 /**
- * Generates a presigned PUT URL for Cloudflare R2, or a local endpoint URL for dev fallback.
+ * Generates an upload URL (routes through /api/media/upload for secure cloud persistence)
  */
 export async function generateUploadUrl(
   workspaceId: string,
@@ -46,23 +30,13 @@ export async function generateUploadUrl(
   const uniqueId = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
   const storageKey = `workspaces/${workspaceId}/${uniqueId}-${sanitizedFileName}`;
 
-  if (s3Client && isR2Configured) {
-    const command = new PutObjectCommand({
-      Bucket: R2_BUCKET_NAME,
-      Key: storageKey,
-      ContentType: mimeType,
-    });
-
-    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-    const publicUrl = R2_PUBLIC_DOMAIN
-      ? `${R2_PUBLIC_DOMAIN}/${storageKey}`
-      : `https://${R2_BUCKET_NAME}.r2.cloudflarestorage.com/${storageKey}`;
-
+  if (isSupabaseStorageConfigured) {
+    const publicUrl = `${SUPABASE_URL.replace(/\/$/, "")}/storage/v1/object/public/${STORAGE_BUCKET}/${storageKey}`;
     return {
-      uploadUrl,
+      uploadUrl: `/api/media/upload?key=${encodeURIComponent(storageKey)}&mime=${encodeURIComponent(mimeType)}`,
       storageKey,
       publicUrl,
-      isDirectUpload: true,
+      isDirectUpload: false,
     };
   }
 
@@ -76,41 +50,73 @@ export async function generateUploadUrl(
 }
 
 /**
- * Saves a local buffer for development fallback mode.
+ * Saves a buffer to Supabase Storage, or local disk as dev fallback.
  */
-export async function saveLocalMediaFile(storageKey: string, buffer: Buffer): Promise<string> {
+export async function saveMediaFile(
+  storageKey: string,
+  buffer: Buffer,
+  mimeType: string = "image/jpeg"
+): Promise<string> {
+  if (isSupabaseStorageConfigured) {
+    try {
+      const endpoint = `${SUPABASE_URL.replace(/\/$/, "")}/storage/v1/object/${STORAGE_BUCKET}/${storageKey}`;
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": mimeType,
+          "x-upsert": "true",
+        },
+        body: new Uint8Array(buffer),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Supabase Storage upload error:", errorText);
+      } else {
+        return `${SUPABASE_URL.replace(/\/$/, "")}/storage/v1/object/public/${STORAGE_BUCKET}/${storageKey}`;
+      }
+    } catch (err) {
+      console.error("Exception uploading to Supabase Storage:", err);
+    }
+  }
+
+  // Fallback to local storage
   const uploadDir = path.join(process.cwd(), "public", "uploads", path.dirname(storageKey));
   await fs.promises.mkdir(uploadDir, { recursive: true });
-  
   const fullFilePath = path.join(process.cwd(), "public", "uploads", storageKey);
   await fs.promises.writeFile(fullFilePath, buffer);
-  
+
   return `/uploads/${storageKey}`;
 }
 
 /**
- * Deletes a file from R2 or local storage.
+ * Deletes a file from Supabase Storage or local disk.
  */
 export async function deleteMediaFile(storageKey: string): Promise<void> {
-  if (s3Client && isR2Configured) {
+  if (isSupabaseStorageConfigured) {
     try {
-      await s3Client.send(
-        new DeleteObjectCommand({
-          Bucket: R2_BUCKET_NAME,
-          Key: storageKey,
-        })
-      );
+      const endpoint = `${SUPABASE_URL.replace(/\/$/, "")}/storage/v1/object/${STORAGE_BUCKET}`;
+      await fetch(endpoint, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ prefixes: [storageKey] }),
+      });
+      return;
     } catch (err) {
-      console.error("Failed to delete R2 object:", err);
+      console.error("Failed to delete Supabase storage object:", err);
     }
-  } else {
-    try {
-      const fullFilePath = path.join(process.cwd(), "public", "uploads", storageKey);
-      if (fs.existsSync(fullFilePath)) {
-        await fs.promises.unlink(fullFilePath);
-      }
-    } catch (err) {
-      console.error("Failed to delete local media file:", err);
+  }
+
+  try {
+    const fullFilePath = path.join(process.cwd(), "public", "uploads", storageKey);
+    if (fs.existsSync(fullFilePath)) {
+      await fs.promises.unlink(fullFilePath);
     }
+  } catch (err) {
+    console.error("Failed to delete local media file:", err);
   }
 }
