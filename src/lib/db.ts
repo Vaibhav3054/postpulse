@@ -718,4 +718,184 @@ export const db = {
       });
     },
   },
+
+  businessProfiles: {
+    async findBySocialAccountId(socialAccountId: string) {
+      return prisma.businessProfileLocation.findUnique({
+        where: { socialAccountId },
+        include: {
+          reviews: {
+            orderBy: { reviewCreatedAt: "desc" },
+          },
+          socialAccount: true,
+        },
+      });
+    },
+
+    async upsert(data: {
+      socialAccountId: string;
+      platformLocationId: string;
+      locationName: string;
+      primaryCategory?: string;
+      address?: string;
+      phone?: string;
+      websiteUrl?: string;
+      description?: string;
+      regularHours?: any;
+      specialHours?: any;
+      attributes?: any;
+      coverPhotoUrl?: string;
+      logoPhotoUrl?: string;
+      photos?: any;
+      rating?: number;
+      reviewCount?: number;
+    }) {
+      return prisma.businessProfileLocation.upsert({
+        where: { socialAccountId: data.socialAccountId },
+        create: {
+          socialAccountId: data.socialAccountId,
+          platformLocationId: data.platformLocationId,
+          locationName: data.locationName,
+          primaryCategory: data.primaryCategory,
+          address: data.address,
+          phone: data.phone,
+          websiteUrl: data.websiteUrl,
+          description: data.description,
+          regularHours: data.regularHours || [],
+          specialHours: data.specialHours || [],
+          attributes: data.attributes || {},
+          coverPhotoUrl: data.coverPhotoUrl,
+          logoPhotoUrl: data.logoPhotoUrl,
+          photos: data.photos || [],
+          rating: data.rating ?? 4.9,
+          reviewCount: data.reviewCount ?? 0,
+        },
+        update: {
+          locationName: data.locationName,
+          primaryCategory: data.primaryCategory,
+          address: data.address,
+          phone: data.phone,
+          websiteUrl: data.websiteUrl,
+          description: data.description,
+          regularHours: data.regularHours,
+          specialHours: data.specialHours,
+          attributes: data.attributes,
+          coverPhotoUrl: data.coverPhotoUrl,
+          logoPhotoUrl: data.logoPhotoUrl,
+          photos: data.photos,
+          rating: data.rating,
+          reviewCount: data.reviewCount,
+          lastSyncedAt: new Date(),
+        },
+        include: {
+          reviews: {
+            orderBy: { reviewCreatedAt: "desc" },
+          },
+          socialAccount: true,
+        },
+      });
+    },
+
+    async updateInfo(
+      id: string,
+      data: {
+        locationName?: string;
+        primaryCategory?: string;
+        address?: string;
+        phone?: string;
+        websiteUrl?: string;
+        description?: string;
+        attributes?: any;
+      }
+    ) {
+      return prisma.businessProfileLocation.update({
+        where: { id },
+        data: {
+          ...data,
+          lastSyncedAt: new Date(),
+        },
+      });
+    },
+
+    async updateHours(
+      id: string,
+      regularHours: any,
+      specialHours?: any
+    ) {
+      return prisma.businessProfileLocation.update({
+        where: { id },
+        data: {
+          regularHours: regularHours as any,
+          ...(specialHours !== undefined ? { specialHours: specialHours as any } : {}),
+          lastSyncedAt: new Date(),
+        },
+      });
+    },
+
+    async addPhoto(id: string, photo: { url: string; caption?: string; category?: string; uploadedAt?: string }) {
+      const loc = await prisma.businessProfileLocation.findUnique({ where: { id } });
+      const currentPhotos = Array.isArray(loc?.photos) ? (loc.photos as any[]) : [];
+      const updatedPhotos = [
+        {
+          id: `photo_${Date.now()}`,
+          url: photo.url,
+          caption: photo.caption || "",
+          category: photo.category || "INTERIOR",
+          uploadedAt: photo.uploadedAt || new Date().toISOString(),
+        },
+        ...currentPhotos,
+      ];
+
+      return prisma.businessProfileLocation.update({
+        where: { id },
+        data: {
+          photos: updatedPhotos as any,
+          lastSyncedAt: new Date(),
+        },
+      });
+    },
+
+    async deletePhoto(id: string, photoId: string) {
+      const loc = await prisma.businessProfileLocation.findUnique({ where: { id } });
+      const currentPhotos = Array.isArray(loc?.photos) ? (loc.photos as any[]) : [];
+      const updatedPhotos = currentPhotos.filter((p: any) => p.id !== photoId && p.url !== photoId);
+
+      return prisma.businessProfileLocation.update({
+        where: { id },
+        data: {
+          photos: updatedPhotos as any,
+          lastSyncedAt: new Date(),
+        },
+      });
+    },
+
+    reviews: {
+      async listForLocation(locationId: string) {
+        return prisma.customerReview.findMany({
+          where: { locationId },
+          orderBy: { reviewCreatedAt: "desc" },
+        });
+      },
+
+      async reply(reviewId: string, replyText: string) {
+        return prisma.customerReview.update({
+          where: { id: reviewId },
+          data: {
+            replyText,
+            replyCreatedAt: new Date(),
+          },
+        });
+      },
+
+      async deleteReply(reviewId: string) {
+        return prisma.customerReview.update({
+          where: { id: reviewId },
+          data: {
+            replyText: null,
+            replyCreatedAt: null,
+          },
+        });
+      },
+    },
+  },
 };

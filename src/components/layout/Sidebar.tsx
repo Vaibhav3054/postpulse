@@ -92,6 +92,11 @@ export function Sidebar({
       icon: Share2,
     },
     {
+      label: "Account Management",
+      href: `/app/${slug}/account-management`,
+      icon: Building2,
+    },
+    {
       label: "Analytics",
       href: `/app/${slug}/analytics`,
       icon: BarChart3,

@@ -128,6 +128,7 @@ model SocialAccount {
   isActive              Boolean               @default(true)
   workspace             Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   targets               PostPlatformTarget[]
+  businessProfile       BusinessProfileLocation?
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
 
@@ -250,3 +251,50 @@ model ActivityLog {
 
   @@index([workspaceId, createdAt])
 }
+
+model BusinessProfileLocation {
+  id                  String             @id @default(uuid())
+  socialAccountId     String             @unique
+  platformLocationId  String
+  locationName        String
+  primaryCategory     String?
+  address             String?
+  phone               String?
+  websiteUrl          String?
+  description         String?
+  regularHours        Json               @default("[]")
+  specialHours        Json               @default("[]")
+  attributes          Json               @default("{}")
+  coverPhotoUrl       String?
+  logoPhotoUrl        String?
+  photos              Json               @default("[]")
+  rating              Float?             @default(0.0)
+  reviewCount         Int                @default(0)
+  lastSyncedAt        DateTime           @default(now())
+  socialAccount       SocialAccount      @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+  reviews             CustomerReview[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  @@index([platformLocationId])
+}
+
+model CustomerReview {
+  id                  String                  @id @default(uuid())
+  locationId          String
+  platformReviewId    String
+  reviewerName        String
+  reviewerPhotoUrl    String?
+  starRating          Int
+  comment             String?
+  replyText           String?
+  replyCreatedAt      DateTime?
+  reviewCreatedAt     DateTime                @default(now())
+  location            BusinessProfileLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  @@unique([locationId, platformReviewId])
+  @@index([locationId, starRating])
+}
+
