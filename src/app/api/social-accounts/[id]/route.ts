@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/auth";
+import { requireApiSession, requireWorkspaceMember } from "@/lib/authorization";
 import { db } from "@/lib/db";
 
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = getSessionFromRequest(req);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireApiSession(req);
+  if (auth.error) return auth.error;
 
   const { id } = await params;
   const account = await db.socialAccounts.findById(id);
@@ -17,16 +15,17 @@ export async function DELETE(
     return NextResponse.json({ error: "Account not found." }, { status: 404 });
   }
 
-  const membership = await db.workspaces.checkMembership(account.workspaceId, session.id);
-  if (!membership || (membership.role !== "OWNER" && membership.role !== "ADMIN")) {
-    return NextResponse.json({ error: "Forbidden: Admin or Owner role required to disconnect accounts." }, { status: 403 });
-  }
+  const memberCheck = await requireWorkspaceMember(account.workspaceId, auth.user.id, [
+    "OWNER",
+    "ADMIN",
+  ]);
+  if (memberCheck.error) return memberCheck.error;
 
   try {
     await db.socialAccounts.disconnect(id);
     await db.activity.log({
       workspaceId: account.workspaceId,
-      userId: session.id,
+      userId: auth.user.id,
       action: "SOCIAL_ACCOUNT_DISCONNECTED",
       entityType: "SOCIAL_ACCOUNT",
       entityId: id,

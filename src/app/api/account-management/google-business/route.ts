@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/auth";
+import {
+  requireApiSession,
+  requireWorkspaceMember,
+  requireWorkspaceSocialAccount,
+} from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { GoogleBusinessManagementService } from "@/lib/account-management/google-business.service";
+import { gbpPatchSchema, parseJsonBody } from "@/lib/validation";
 
 export async function GET(req: NextRequest) {
-  const session = getSessionFromRequest(req);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireApiSession(req);
+  if (auth.error) return auth.error;
 
   const { searchParams } = new URL(req.url);
   const workspaceId = searchParams.get("workspaceId");
@@ -17,17 +20,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "workspaceId is required" }, { status: 400 });
   }
 
-  const membership = await db.workspaces.checkMembership(workspaceId, session.id);
-  if (!membership) {
-    return NextResponse.json({ error: "Forbidden: Not a member of this workspace" }, { status: 403 });
-  }
+  const memberCheck = await requireWorkspaceMember(workspaceId, auth.user.id);
+  if (memberCheck.error) return memberCheck.error;
 
   try {
-    // If specific socialAccountId provided, load it
     let targetAccountId = socialAccountId;
 
-    // Otherwise find the first active GOOGLE_BUSINESS account in this workspace
-    if (!targetAccountId) {
+    if (targetAccountId) {
+      const ownership = await requireWorkspaceSocialAccount(
+        workspaceId,
+        targetAccountId,
+        "GOOGLE_BUSINESS"
+      );
+      if (ownership.error) return ownership.error;
+    } else {
       const accounts = await db.socialAccounts.listForWorkspace(workspaceId);
       const gbpAccount = accounts.find((a) => a.platform === "GOOGLE_BUSINESS");
       if (!gbpAccount) {
@@ -48,40 +54,31 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = getSessionFromRequest(req);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireApiSession(req);
+  if (auth.error) return auth.error;
+
+  const parsed = await parseJsonBody(req, gbpPatchSchema);
+  if (parsed.error) return parsed.error;
+
+  const { workspaceId, socialAccountId, action, data } = parsed.data;
+
+  const memberCheck = await requireWorkspaceMember(workspaceId, auth.user.id, ["OWNER", "ADMIN"]);
+  if (memberCheck.error) return memberCheck.error;
+
+  const ownership = await requireWorkspaceSocialAccount(
+    workspaceId,
+    socialAccountId,
+    "GOOGLE_BUSINESS"
+  );
+  if (ownership.error) return ownership.error;
 
   try {
-    const body = await req.json();
-    const { workspaceId, socialAccountId, action, data } = body;
-
-    if (!workspaceId || !socialAccountId || !action) {
-      return NextResponse.json(
-        { error: "workspaceId, socialAccountId, and action are required" },
-        { status: 400 }
-      );
-    }
-
-    const membership = await db.workspaces.checkMembership(workspaceId, session.id);
-    if (!membership) {
-      return NextResponse.json({ error: "Forbidden: Not a member of this workspace" }, { status: 403 });
-    }
-
-    if (membership.role !== "OWNER" && membership.role !== "ADMIN") {
-      return NextResponse.json(
-        { error: "Forbidden: Only workspace Owner or Admin can update account business details" },
-        { status: 403 }
-      );
-    }
-
     if (action === "update_info") {
       const updated = await GoogleBusinessManagementService.updateInfo(
         socialAccountId,
-        session.id,
+        auth.user.id,
         workspaceId,
-        data
+        data as Parameters<typeof GoogleBusinessManagementService.updateInfo>[3]
       );
       return NextResponse.json({ success: true, location: updated });
     }
@@ -89,10 +86,10 @@ export async function PATCH(req: NextRequest) {
     if (action === "update_hours") {
       const updated = await GoogleBusinessManagementService.updateHours(
         socialAccountId,
-        session.id,
+        auth.user.id,
         workspaceId,
-        data.regularHours,
-        data.specialHours
+        (data.regularHours as Parameters<typeof GoogleBusinessManagementService.updateHours>[3]) || [],
+        (data.specialHours as Parameters<typeof GoogleBusinessManagementService.updateHours>[4]) || []
       );
       return NextResponse.json({ success: true, location: updated });
     }

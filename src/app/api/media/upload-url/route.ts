@@ -1,33 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/auth";
+import { requireApiSession, requireWorkspaceMember } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { generateUploadUrl } from "@/lib/storage";
 import { SUBSCRIPTION_PLANS, QuotaExceededError } from "@/lib/quota";
+import { mediaUploadUrlSchema, parseJsonBody } from "@/lib/validation";
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
-  const session = getSessionFromRequest(req);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireApiSession(req);
+  if (auth.error) return auth.error;
+
+  const clientIp = getClientIp(req);
+  const rateResult = await checkRateLimit(
+    `media:upload-url:${auth.user.id}:${clientIp}`,
+    60,
+    10 * 60 * 1000
+  );
+  if (!rateResult.allowed) {
+    return rateLimitExceededResponse(rateResult, "Too many upload requests. Please wait.");
   }
 
+  const parsed = await parseJsonBody(req, mediaUploadUrlSchema);
+  if (parsed.error) return parsed.error;
+
+  const { workspaceId, fileName, mimeType } = parsed.data;
+
+  const memberCheck = await requireWorkspaceMember(workspaceId, auth.user.id);
+  if (memberCheck.error) return memberCheck.error;
+
   try {
-    const { workspaceId, fileName, mimeType, fileSizeBytes } = await req.json();
-
-    if (!workspaceId || !fileName || !mimeType) {
-      return NextResponse.json(
-        { error: "workspaceId, fileName, and mimeType are required." },
-        { status: 400 }
-      );
-    }
-
-    const membership = await db.workspaces.checkMembership(workspaceId, session.id);
-    if (!membership) {
-      return NextResponse.json({ error: "Forbidden: Not a member of this workspace." }, { status: 403 });
-    }
-
     // Quota check: Total storage in MB
     const ws = await db.workspaces.findById(workspaceId);
-    const plan = SUBSCRIPTION_PLANS[ws?.planId || "free"];
+    const plan = SUBSCRIPTION_PLANS[ws?.planId || "free"] || SUBSCRIPTION_PLANS.free;
     const existingMedia = await db.mediaAssets.listForWorkspace(workspaceId);
     const totalStorageBytes = existingMedia.reduce((acc, m) => acc + m.fileSizeBytes, 0);
     const totalStorageMb = Math.round(totalStorageBytes / (1024 * 1024));

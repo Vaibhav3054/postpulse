@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/auth";
+import {
+  requireApiSession,
+  requireWorkspaceMember,
+  sanitizeSocialAccount,
+} from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { getSocialProvider } from "@/lib/social-providers/registry";
 import { SocialPlatformType } from "@/lib/social-providers/types";
 import { encryptToken } from "@/lib/crypto";
 import { QuotaExceededError } from "@/lib/quota";
+import { parseJsonBody, socialAccountConnectSchema } from "@/lib/validation";
 
 export async function GET(req: NextRequest) {
-  const session = getSessionFromRequest(req);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireApiSession(req);
+  if (auth.error) return auth.error;
 
   const { searchParams } = new URL(req.url);
   const workspaceId = searchParams.get("workspaceId");
@@ -18,36 +21,28 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "workspaceId is required." }, { status: 400 });
   }
 
-  const membership = await db.workspaces.checkMembership(workspaceId, session.id);
-  if (!membership) {
-    return NextResponse.json({ error: "Forbidden: Not a member of this workspace." }, { status: 403 });
-  }
+  const memberCheck = await requireWorkspaceMember(workspaceId, auth.user.id);
+  if (memberCheck.error) return memberCheck.error;
 
   const accounts = await db.socialAccounts.listForWorkspace(workspaceId);
-  // Never expose raw or encrypted access tokens to the frontend
-  const safeAccounts = accounts.map(({ accessTokenEncrypted, refreshTokenEncrypted, ...safe }) => safe);
+  const safeAccounts = accounts.map((a) => sanitizeSocialAccount(a));
 
   return NextResponse.json({ accounts: safeAccounts });
 }
 
 export async function POST(req: NextRequest) {
-  const session = getSessionFromRequest(req);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireApiSession(req);
+  if (auth.error) return auth.error;
+
+  const parsed = await parseJsonBody(req, socialAccountConnectSchema);
+  if (parsed.error) return parsed.error;
+
+  const { workspaceId, platform, mockCode } = parsed.data;
+
+  const memberCheck = await requireWorkspaceMember(workspaceId, auth.user.id, ["OWNER", "ADMIN"]);
+  if (memberCheck.error) return memberCheck.error;
 
   try {
-    const { workspaceId, platform, mockCode } = await req.json();
-
-    if (!workspaceId || !platform) {
-      return NextResponse.json({ error: "workspaceId and platform are required." }, { status: 400 });
-    }
-
-    const membership = await db.workspaces.checkMembership(workspaceId, session.id);
-    if (!membership) {
-      return NextResponse.json({ error: "Forbidden: Not a member of this workspace." }, { status: 403 });
-    }
-
     const provider = getSocialProvider(platform as SocialPlatformType);
     const connectResult = await provider.handleCallback(
       mockCode || `mock_code_${Date.now()}`,
@@ -62,7 +57,9 @@ export async function POST(req: NextRequest) {
       platformDisplayName: connectResult.account.platformDisplayName,
       avatarUrl: connectResult.account.avatarUrl || "",
       accessTokenEncrypted: encryptToken(connectResult.accessToken),
-      refreshTokenEncrypted: connectResult.refreshToken ? encryptToken(connectResult.refreshToken) : undefined,
+      refreshTokenEncrypted: connectResult.refreshToken
+        ? encryptToken(connectResult.refreshToken)
+        : undefined,
       tokenExpiresAt: connectResult.tokenExpiresAt,
       scopes: connectResult.scopes,
       metadata: connectResult.account.metadata || {},
@@ -71,7 +68,7 @@ export async function POST(req: NextRequest) {
 
     await db.activity.log({
       workspaceId,
-      userId: session.id,
+      userId: auth.user.id,
       action: "SOCIAL_ACCOUNT_CONNECTED",
       entityType: "SOCIAL_ACCOUNT",
       entityId: newAccount.id,
@@ -82,8 +79,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const { accessTokenEncrypted, refreshTokenEncrypted, ...safeAccount } = newAccount;
-    return NextResponse.json({ account: safeAccount }, { status: 201 });
+    return NextResponse.json({ account: sanitizeSocialAccount(newAccount) }, { status: 201 });
   } catch (err: unknown) {
     if (err instanceof QuotaExceededError) {
       return NextResponse.json(
@@ -98,6 +94,9 @@ export async function POST(req: NextRequest) {
       );
     }
     const error = err as Error;
-    return NextResponse.json({ error: error.message || "Failed to connect social account" }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || "Failed to connect social account" },
+      { status: 500 }
+    );
   }
 }

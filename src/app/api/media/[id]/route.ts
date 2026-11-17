@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/auth";
+import { requireApiSession, requireWorkspaceMember } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { deleteMediaFile } from "@/lib/storage";
 
@@ -7,10 +7,8 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = getSessionFromRequest(req);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireApiSession(req);
+  if (auth.error) return auth.error;
 
   const { id } = await params;
   const asset = await db.mediaAssets.findById(id);
@@ -18,10 +16,8 @@ export async function DELETE(
     return NextResponse.json({ error: "Media asset not found." }, { status: 404 });
   }
 
-  const membership = await db.workspaces.checkMembership(asset.workspaceId, session.id);
-  if (!membership) {
-    return NextResponse.json({ error: "Forbidden: Not a member of this workspace." }, { status: 403 });
-  }
+  const memberCheck = await requireWorkspaceMember(asset.workspaceId, auth.user.id);
+  if (memberCheck.error) return memberCheck.error;
 
   try {
     await deleteMediaFile(asset.storageKey);
@@ -29,7 +25,7 @@ export async function DELETE(
 
     await db.activity.log({
       workspaceId: asset.workspaceId,
-      userId: session.id,
+      userId: auth.user.id,
       action: "MEDIA_DELETED",
       entityType: "MEDIA_ASSET",
       entityId: id,

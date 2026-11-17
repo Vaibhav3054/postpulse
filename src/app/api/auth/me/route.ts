@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/auth";
+import { requireApiSession } from "@/lib/authorization";
 import { db } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
-  const session = getSessionFromRequest(req);
-  if (!session) {
-    return NextResponse.json({ user: null }, { status: 401 });
+  const auth = await requireApiSession(req);
+  if (auth.error) {
+    return NextResponse.json({ user: null }, { status: auth.error.status });
   }
 
-  const user = await db.users.findById(session.id);
+  const user = await db.users.findById(auth.user.id);
   if (!user) {
     return NextResponse.json({ user: null }, { status: 401 });
   }

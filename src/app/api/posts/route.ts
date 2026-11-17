@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/auth";
+import {
+  requireApiSession,
+  requireWorkspaceMember,
+  verifyWorkspaceMediaAssets,
+  verifyWorkspaceSocialAccounts,
+} from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { executePublishJob } from "@/lib/queue/publishing-queue";
 import { QuotaExceededError } from "@/lib/quota";
+import { parseJsonBody, postCreateSchema } from "@/lib/validation";
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit";
 
 export async function GET(req: NextRequest) {
-  const session = getSessionFromRequest(req);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireApiSession(req);
+  if (auth.error) return auth.error;
 
   const { searchParams } = new URL(req.url);
   const workspaceId = searchParams.get("workspaceId");
@@ -19,60 +24,77 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "workspaceId is required." }, { status: 400 });
   }
 
-  const membership = await db.workspaces.checkMembership(workspaceId, session.id);
-  if (!membership) {
-    return NextResponse.json({ error: "Forbidden: Not a member of this workspace." }, { status: 403 });
-  }
+  const memberCheck = await requireWorkspaceMember(workspaceId, auth.user.id);
+  if (memberCheck.error) return memberCheck.error;
 
   const posts = await db.posts.listForWorkspace(workspaceId, { status, platform });
   return NextResponse.json({ posts });
 }
 
 export async function POST(req: NextRequest) {
-  const session = getSessionFromRequest(req);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireApiSession(req);
+  if (auth.error) return auth.error;
+
+  const clientIp = getClientIp(req);
+  const rateResult = await checkRateLimit(
+    `posts:create:${auth.user.id}:${clientIp}`,
+    60,
+    10 * 60 * 1000
+  );
+  if (!rateResult.allowed) {
+    return rateLimitExceededResponse(rateResult, "Too many post creation requests. Please wait.");
+  }
+
+  const parsed = await parseJsonBody(req, postCreateSchema);
+  if (parsed.error) return parsed.error;
+
+  const {
+    workspaceId,
+    status,
+    commonCaption,
+    scheduledAt,
+    timezone,
+    mediaAssetIds,
+    targets,
+  } = parsed.data;
+
+  const memberCheck = await requireWorkspaceMember(workspaceId, auth.user.id);
+  if (memberCheck.error) return memberCheck.error;
+
+  // Tenant isolation: verify every referenced socialAccountId belongs to workspaceId
+  const accountsCheck = await verifyWorkspaceSocialAccounts(
+    workspaceId,
+    targets.map((t) => t.socialAccountId)
+  );
+  if (!accountsCheck.ok) return accountsCheck.error;
+
+  // Tenant isolation: verify every referenced mediaAssetId belongs to workspaceId
+  if (mediaAssetIds.length > 0) {
+    const mediaCheck = await verifyWorkspaceMediaAssets(workspaceId, mediaAssetIds);
+    if (!mediaCheck.ok) return mediaCheck.error;
   }
 
   try {
-    const {
-      workspaceId,
-      status, // "DRAFT" | "SCHEDULED" | "PUBLISHED"
-      commonCaption,
-      scheduledAt,
-      timezone,
-      mediaAssetIds,
-      targets,
-    } = await req.json();
-
-    if (!workspaceId) {
-      return NextResponse.json({ error: "workspaceId is required." }, { status: 400 });
-    }
-
-    if (!targets || targets.length === 0) {
-      return NextResponse.json({ error: "At least one social account target is required." }, { status: 400 });
-    }
-
-    const membership = await db.workspaces.checkMembership(workspaceId, session.id);
-    if (!membership) {
-      return NextResponse.json({ error: "Forbidden: Not a member of this workspace." }, { status: 403 });
-    }
-
     const post = await db.posts.create({
       workspaceId,
-      createdByUserId: session.id,
+      createdByUserId: auth.user.id,
       status: status || "DRAFT",
       commonCaption: commonCaption || "",
       scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
       timezone: timezone || "UTC",
-      mediaAssetIds: mediaAssetIds || [],
+      mediaAssetIds,
       targets,
     });
 
     await db.activity.log({
       workspaceId,
-      userId: session.id,
-      action: status === "PUBLISHED" ? "POST_PUBLISHED" : status === "SCHEDULED" ? "POST_SCHEDULED" : "POST_DRAFTED",
+      userId: auth.user.id,
+      action:
+        status === "PUBLISHED"
+          ? "POST_PUBLISHED"
+          : status === "SCHEDULED"
+            ? "POST_SCHEDULED"
+            : "POST_DRAFTED",
       entityType: "POST",
       entityId: post.id,
       metadata: {

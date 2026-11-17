@@ -1,39 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/auth";
+import {
+  requireApiSession,
+  requireWorkspaceMember,
+  requireWorkspaceSocialAccount,
+  sanitizeSocialAccount,
+} from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { prisma } from "@/lib/prisma";
+import { facebookPatchSchema, parseJsonBody } from "@/lib/validation";
 
 export async function PATCH(req: NextRequest) {
-  const session = getSessionFromRequest(req);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireApiSession(req);
+  if (auth.error) return auth.error;
+
+  const parsed = await parseJsonBody(req, facebookPatchSchema);
+  if (parsed.error) return parsed.error;
+
+  const { workspaceId, socialAccountId, about, phone, website, hours } = parsed.data;
+
+  const memberCheck = await requireWorkspaceMember(workspaceId, auth.user.id, ["OWNER", "ADMIN"]);
+  if (memberCheck.error) return memberCheck.error;
+
+  const ownership = await requireWorkspaceSocialAccount(
+    workspaceId,
+    socialAccountId,
+    "FACEBOOK"
+  );
+  if (ownership.error) return ownership.error;
 
   try {
-    const { workspaceId, socialAccountId, about, phone, website, hours } = await req.json();
-
-    if (!workspaceId || !socialAccountId) {
-      return NextResponse.json({ error: "workspaceId and socialAccountId are required" }, { status: 400 });
-    }
-
-    const membership = await db.workspaces.checkMembership(workspaceId, session.id);
-    if (!membership) {
-      return NextResponse.json({ error: "Forbidden: Not a member of this workspace" }, { status: 403 });
-    }
-
-    if (membership.role !== "OWNER" && membership.role !== "ADMIN") {
-      return NextResponse.json(
-        { error: "Forbidden: Only workspace Owner or Admin can update Facebook Page settings" },
-        { status: 403 }
-      );
-    }
-
-    const socialAccount = await db.socialAccounts.findById(socialAccountId);
-    if (!socialAccount || socialAccount.platform !== "FACEBOOK") {
-      return NextResponse.json({ error: "Facebook social account not found" }, { status: 404 });
-    }
-
-    const currentMeta = (socialAccount.metadata as Record<string, unknown>) || {};
+    const currentMeta = (ownership.account.metadata as Record<string, unknown>) || {};
     const updatedMeta = {
       ...currentMeta,
       ...(about !== undefined ? { about } : {}),
@@ -46,20 +42,20 @@ export async function PATCH(req: NextRequest) {
     const updated = await prisma.socialAccount.update({
       where: { id: socialAccountId },
       data: {
-        metadata: updatedMeta as any,
+        metadata: updatedMeta as object,
       },
     });
 
     await db.activity.log({
       workspaceId,
-      userId: session.id,
+      userId: auth.user.id,
       action: "FB_PAGE_UPDATED",
       entityType: "FACEBOOK_PAGE",
       entityId: socialAccountId,
       metadata: { about, phone, website, hours },
     });
 
-    return NextResponse.json({ success: true, account: updated });
+    return NextResponse.json({ success: true, account: sanitizeSocialAccount(updated) });
   } catch (err: unknown) {
     const error = err as Error;
     return NextResponse.json({ error: error.message || "Failed to update Facebook Page" }, { status: 500 });

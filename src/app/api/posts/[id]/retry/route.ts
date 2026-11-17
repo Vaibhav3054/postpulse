@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/auth";
+import { requireApiSession, requireWorkspaceMember } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { executePublishJob } from "@/lib/queue/publishing-queue";
 
@@ -7,10 +7,8 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = getSessionFromRequest(req);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireApiSession(req);
+  if (auth.error) return auth.error;
 
   const { id } = await params;
   const post = await db.posts.findById(id);
@@ -18,10 +16,8 @@ export async function POST(
     return NextResponse.json({ error: "Post not found." }, { status: 404 });
   }
 
-  const membership = await db.workspaces.checkMembership(post.workspaceId, session.id);
-  if (!membership) {
-    return NextResponse.json({ error: "Forbidden: Not a member of this workspace." }, { status: 403 });
-  }
+  const memberCheck = await requireWorkspaceMember(post.workspaceId, auth.user.id);
+  if (memberCheck.error) return memberCheck.error;
 
   try {
     const failedTargets = post.platformTargets.filter((t) => t.status === "FAILED");
@@ -29,7 +25,6 @@ export async function POST(
       return NextResponse.json({ message: "No failed platform targets to retry." });
     }
 
-    // Set post status back to publishing
     await db.posts.update(id, { status: "PUBLISHING" });
 
     for (const target of failedTargets) {

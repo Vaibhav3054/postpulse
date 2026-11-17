@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { requireServerWorkspaceAccess } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { Header } from "@/components/layout/Header";
 import { ContentComposer } from "@/components/composer/ContentComposer";
@@ -9,8 +9,7 @@ export default async function ComposerPage({
   params: Promise<{ workspaceSlug: string }>;
 }) {
   const { workspaceSlug } = await params;
-  const workspace = await db.workspaces.findBySlug(workspaceSlug);
-  if (!workspace) notFound();
+  const { workspace } = await requireServerWorkspaceAccess(workspaceSlug);
 
   const accounts = await db.socialAccounts.listForWorkspace(workspace.id);
   const media = await db.mediaAssets.listForWorkspace(workspace.id);

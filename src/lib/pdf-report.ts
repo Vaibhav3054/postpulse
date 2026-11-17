@@ -34,6 +34,36 @@ export interface PdfReportPayload {
   posts: ReportPostItem[];
 }
 
+export function escapeHtml(input: unknown): string {
+  return String(input ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function sanitizeColor(color: string): string {
+  return /^#[0-9a-fA-F]{3,8}$/.test(color) ? color : "#4f46e5";
+}
+
+function sanitizeMediaUrl(url?: string): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (trimmed.startsWith("/")) {
+    return escapeHtml(trimmed);
+  }
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+      return escapeHtml(parsed.toString());
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 export function generateAndPrintPdfReport(data: PdfReportPayload) {
   // Create an isolated printable iframe
   const iframe = document.createElement("iframe");
@@ -51,50 +81,60 @@ export function generateAndPrintPdfReport(data: PdfReportPayload) {
     return;
   }
 
+  const safeReportTitle = escapeHtml(data.reportTitle);
+  const safeWorkspaceName = escapeHtml(data.workspaceName);
+  const safeGeneratedAt = escapeHtml(data.generatedAtIST);
+  const safeEngagementRate = escapeHtml(data.summary.engagementRate);
+
   const platformDotsHtml = data.platformBreakdown
     .map(
       (p) => `
       <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; margin-bottom: 4px;">
-        <span style="width: 10px; height: 10px; border-radius: 50%; background-color: ${p.color}; display: inline-block;"></span>
-        <span style="font-weight: 600; color: #1f2937;">${p.platform}:</span>
-        <span style="color: #4b5563;">${p.engagements.toLocaleString()} (${p.percentage}%)</span>
+        <span style="width: 10px; height: 10px; border-radius: 50%; background-color: ${sanitizeColor(p.color)}; display: inline-block;"></span>
+        <span style="font-weight: 600; color: #1f2937;">${escapeHtml(p.platform)}:</span>
+        <span style="color: #4b5563;">${Number(p.engagements || 0).toLocaleString()} (${Number(p.percentage || 0)}%)</span>
       </div>
     `
     )
     .join("");
 
   const postsRowsHtml = data.posts
-    .map(
-      (p, idx) => `
+    .map((p, idx) => {
+      const safeMediaUrl = sanitizeMediaUrl(p.mediaUrl);
+      const safeCaption = escapeHtml(p.caption || "Untitled Post");
+      const safePublishedAt = escapeHtml(p.publishedAt || "Recently Published");
+      const safePlatforms = escapeHtml((p.platforms || []).join(", "));
+      const safeStatus = escapeHtml(p.status);
+      return `
       <tr style="border-bottom: 1px solid #e5e7eb; page-break-inside: avoid;">
         <td style="padding: 10px 8px; font-size: 11px; color: #6b7280; font-family: monospace;">#${idx + 1}</td>
         <td style="padding: 10px 8px;">
           ${
-            p.mediaUrl
-              ? `<img src="${p.mediaUrl}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid #e5e7eb; margin-bottom: 4px;" alt="media" />`
+            safeMediaUrl
+              ? `<img src="${safeMediaUrl}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid #e5e7eb; margin-bottom: 4px;" alt="media" />`
               : `<div style="width: 44px; height: 44px; border-radius: 6px; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #9ca3af;">Text</div>`
           }
         </td>
         <td style="padding: 10px 8px; max-width: 260px;">
           <div style="font-size: 11px; font-weight: 600; color: #111827; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
-            ${p.caption || "Untitled Post"}
+            ${safeCaption}
           </div>
           <div style="font-size: 10px; color: #6b7280; margin-top: 3px;">
-            ${p.publishedAt || "Recently Published"} • <strong style="color: #4f46e5;">${p.platforms.join(", ")}</strong>
+            ${safePublishedAt} • <strong style="color: #4f46e5;">${safePlatforms}</strong>
           </div>
         </td>
-        <td style="padding: 10px 8px; font-size: 11px; text-align: right; font-weight: 600; color: #111827;">${p.impressions.toLocaleString()}</td>
-        <td style="padding: 10px 8px; font-size: 11px; text-align: right; color: #374151;">${p.likes.toLocaleString()}</td>
-        <td style="padding: 10px 8px; font-size: 11px; text-align: right; color: #374151;">${p.comments.toLocaleString()}</td>
-        <td style="padding: 10px 8px; font-size: 11px; text-align: right; color: #374151;">${p.shares.toLocaleString()}</td>
+        <td style="padding: 10px 8px; font-size: 11px; text-align: right; font-weight: 600; color: #111827;">${Number(p.impressions || 0).toLocaleString()}</td>
+        <td style="padding: 10px 8px; font-size: 11px; text-align: right; color: #374151;">${Number(p.likes || 0).toLocaleString()}</td>
+        <td style="padding: 10px 8px; font-size: 11px; text-align: right; color: #374151;">${Number(p.comments || 0).toLocaleString()}</td>
+        <td style="padding: 10px 8px; font-size: 11px; text-align: right; color: #374151;">${Number(p.shares || 0).toLocaleString()}</td>
         <td style="padding: 10px 8px; text-align: center;">
           <span style="display: inline-block; padding: 2px 8px; font-size: 9px; font-weight: 700; border-radius: 9999px; text-transform: uppercase; background: #ecfdf5; color: #047857;">
-            ${p.status}
+            ${safeStatus}
           </span>
         </td>
       </tr>
-    `
-    )
+    `;
+    })
     .join("");
 
   const htmlContent = `
@@ -102,7 +142,7 @@ export function generateAndPrintPdfReport(data: PdfReportPayload) {
     <html>
       <head>
         <meta charset="utf-8">
-        <title>${data.reportTitle} - ${data.workspaceName}</title>
+        <title>${safeReportTitle} - ${safeWorkspaceName}</title>
         <style>
           @page {
             size: A4;
@@ -220,12 +260,12 @@ export function generateAndPrintPdfReport(data: PdfReportPayload) {
                 <div style="font-size: 11px; color: #6b7280;">Social Media SaaS • Performance Report</div>
               </div>
             </div>
-            <div style="margin-top: 12px; font-size: 15px; font-weight: 700; color: #111827;">${data.reportTitle}</div>
-            <div style="font-size: 11px; color: #4b5563; margin-top: 2px;">Workspace: <strong>${data.workspaceName}</strong></div>
+            <div style="margin-top: 12px; font-size: 15px; font-weight: 700; color: #111827;">${safeReportTitle}</div>
+            <div style="font-size: 11px; color: #4b5563; margin-top: 2px;">Workspace: <strong>${safeWorkspaceName}</strong></div>
           </div>
           <div style="text-align: right;">
             <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #6b7280;">Timing / Timezone</div>
-            <div style="font-size: 11px; color: #111827; font-weight: 600; margin-top: 2px;">${data.generatedAtIST}</div>
+            <div style="font-size: 11px; color: #111827; font-weight: 600; margin-top: 2px;">${safeGeneratedAt}</div>
             <div style="margin-top: 8px; font-size: 10px; color: #059669; font-weight: 600;">Verified Platform Data</div>
           </div>
         </div>
@@ -249,8 +289,8 @@ export function generateAndPrintPdfReport(data: PdfReportPayload) {
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Engagement Rate</div>
-            <div class="kpi-value">${data.summary.engagementRate}</div>
-            <div class="kpi-sub">Across ${data.summary.totalPosts} post(s)</div>
+            <div class="kpi-value">${safeEngagementRate}</div>
+            <div class="kpi-sub">Across ${Number(data.summary.totalPosts || 0)} post(s)</div>
           </div>
         </div>
 
@@ -285,7 +325,7 @@ export function generateAndPrintPdfReport(data: PdfReportPayload) {
         <!-- Footer -->
         <div class="footer">
           <div>Generated by PostPulse Social Media SaaS • Verified Official APIs Only</div>
-          <div>Confidential & Proprietary • ${data.workspaceName}</div>
+          <div>Confidential & Proprietary • ${safeWorkspaceName}</div>
         </div>
       </body>
     </html>

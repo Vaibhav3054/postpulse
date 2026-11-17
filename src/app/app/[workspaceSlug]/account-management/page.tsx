@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { requireServerWorkspaceAccess } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { Header } from "@/components/layout/Header";
 import { AccountManagementView } from "@/components/account-management/AccountManagementView";
@@ -10,8 +10,7 @@ export default async function AccountManagementPage({
   params: Promise<{ workspaceSlug: string }>;
 }) {
   const { workspaceSlug } = await params;
-  const workspace = await db.workspaces.findBySlug(workspaceSlug);
-  if (!workspace) notFound();
+  const { workspace } = await requireServerWorkspaceAccess(workspaceSlug);
 
   const accounts = await db.socialAccounts.listForWorkspace(workspace.id);
   const logs = await db.activity.listForWorkspace(workspace.id, 25);

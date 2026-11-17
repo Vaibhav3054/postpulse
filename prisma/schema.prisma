@@ -13,6 +13,11 @@ enum SystemRole {
   SUPERADMIN
 }
 
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
 enum WorkspaceRole {
   OWNER
   ADMIN
@@ -55,6 +60,8 @@ model User {
   fullName        String?
   avatarUrl       String?
   systemRole      SystemRole        @default(USER)
+  status          UserStatus        @default(ACTIVE)
+  tokenVersion    Int               @default(0)
   emailVerified   Boolean           @default(false)
   workspaces      WorkspaceMember[]
   ownedWorkspaces Workspace[]       @relation("WorkspaceOwner")
@@ -296,5 +303,14 @@ model CustomerReview {
 
   @@unique([locationId, platformReviewId])
   @@index([locationId, starRating])
+}
+
+model RateLimitBucket {
+  key       String   @id
+  count     Int      @default(1)
+  resetAt   DateTime
+  updatedAt DateTime @updatedAt
+
+  @@index([resetAt])
 }
 

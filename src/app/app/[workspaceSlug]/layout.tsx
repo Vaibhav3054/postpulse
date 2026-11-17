@@ -1,5 +1,4 @@
-import { redirect, notFound } from "next/navigation";
-import { getSessionUser } from "@/lib/auth";
+import { requireServerWorkspaceAccess } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { AppShell } from "@/components/layout/AppShell";
 
@@ -13,21 +12,7 @@ export default async function WorkspaceLayout({
   params: Promise<{ workspaceSlug: string }>;
 }) {
   const { workspaceSlug } = await params;
-  const session = await getSessionUser();
-
-  if (!session) {
-    redirect("/login");
-  }
-
-  const workspace = await db.workspaces.findBySlug(workspaceSlug);
-  if (!workspace) {
-    notFound();
-  }
-
-  const membership = await db.workspaces.checkMembership(workspace.id, session.id);
-  if (!membership) {
-    redirect("/app");
-  }
+  const { user: session, workspace, membership } = await requireServerWorkspaceAccess(workspaceSlug);
 
   const workspaces = await db.workspaces.listForUser(session.id);
   const currentWsFormatted = {

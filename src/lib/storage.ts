@@ -1,5 +1,6 @@
 import path from "path";
 import fs from "fs";
+import { parseAndValidateStorageKey } from "./validation";
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -57,6 +58,10 @@ export async function saveMediaFile(
   buffer: Buffer,
   mimeType: string = "image/jpeg"
 ): Promise<string> {
+  if (!parseAndValidateStorageKey(storageKey).valid) {
+    throw new Error("Invalid storage key format.");
+  }
+
   if (isSupabaseStorageConfigured) {
     try {
       const endpoint = `${SUPABASE_URL.replace(/\/$/, "")}/storage/v1/object/${STORAGE_BUCKET}/${storageKey}`;
@@ -94,6 +99,10 @@ export async function saveMediaFile(
  * Deletes a file from Supabase Storage or local disk.
  */
 export async function deleteMediaFile(storageKey: string): Promise<void> {
+  if (!parseAndValidateStorageKey(storageKey).valid) {
+    throw new Error("Invalid storage key format.");
+  }
+
   if (isSupabaseStorageConfigured) {
     try {
       const endpoint = `${SUPABASE_URL.replace(/\/$/, "")}/storage/v1/object/${STORAGE_BUCKET}`;

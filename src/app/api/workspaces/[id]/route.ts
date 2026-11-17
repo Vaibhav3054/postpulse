@@ -1,36 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/auth";
+import { requireApiSession, requireWorkspaceMember } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import { parseJsonBody, workspaceUpdateSchema } from "@/lib/validation";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = getSessionFromRequest(req);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireApiSession(req);
+  if (auth.error) return auth.error;
 
   const { id } = await params;
-  const membership = await db.workspaces.checkMembership(id, session.id);
-  if (!membership || (membership.role !== "OWNER" && membership.role !== "ADMIN")) {
-    return NextResponse.json({ error: "Forbidden: Admin or Owner role required." }, { status: 403 });
-  }
+  const memberCheck = await requireWorkspaceMember(id, auth.user.id, ["OWNER", "ADMIN"]);
+  if (memberCheck.error) return memberCheck.error;
+
+  const parsed = await parseJsonBody(req, workspaceUpdateSchema);
+  if (parsed.error) return parsed.error;
 
   try {
-    const { name } = await req.json();
-    if (!name) {
-      return NextResponse.json({ error: "Name is required." }, { status: 400 });
-    }
-
-    const updated = await db.workspaces.update(id, { name });
+    const updated = await db.workspaces.update(id, { name: parsed.data.name });
     await db.activity.log({
       workspaceId: id,
-      userId: session.id,
+      userId: auth.user.id,
       action: "WORKSPACE_RENAMED",
       entityType: "WORKSPACE",
       entityId: id,
-      metadata: { newName: name },
+      metadata: { newName: parsed.data.name },
     });
 
     return NextResponse.json({ workspace: updated });
@@ -44,16 +39,12 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = getSessionFromRequest(req);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireApiSession(req);
+  if (auth.error) return auth.error;
 
   const { id } = await params;
-  const membership = await db.workspaces.checkMembership(id, session.id);
-  if (!membership || membership.role !== "OWNER") {
-    return NextResponse.json({ error: "Forbidden: Only the Workspace Owner can delete it." }, { status: 403 });
-  }
+  const memberCheck = await requireWorkspaceMember(id, auth.user.id, ["OWNER"]);
+  if (memberCheck.error) return memberCheck.error;
 
   try {
     await db.workspaces.delete(id);

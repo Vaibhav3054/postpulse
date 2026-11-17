@@ -1,21 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/auth";
+import { requireApiSession, requireWorkspaceMember } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { getSocialProvider } from "@/lib/social-providers/registry";
 import { SocialPlatformType } from "@/lib/social-providers/types";
 import { encryptToken } from "@/lib/crypto";
 
-export async function GET(req: NextRequest) {
-  const session = getSessionFromRequest(req);
-  const { searchParams } = new URL(req.url);
-  const platform = searchParams.get("platform") as SocialPlatformType;
-  const state = searchParams.get("state"); // workspaceSlug or workspaceId
+const VALID_PLATFORMS = new Set<SocialPlatformType>([
+  "INSTAGRAM",
+  "FACEBOOK",
+  "YOUTUBE",
+  "LINKEDIN",
+  "GOOGLE_BUSINESS",
+]);
 
-  if (!session) {
+export async function GET(req: NextRequest) {
+  if (process.env.MOCK_SOCIAL_PROVIDERS === "false") {
+    return NextResponse.json(
+      { error: "Mock OAuth callback is disabled when live social providers are enabled." },
+      { status: 403 }
+    );
+  }
+
+  const auth = await requireApiSession(req);
+  if (auth.error) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  if (!platform || !state) {
+  const { searchParams } = new URL(req.url);
+  const platform = searchParams.get("platform")?.toUpperCase() as SocialPlatformType;
+  const state = searchParams.get("state"); // workspaceSlug or workspaceId
+
+  if (!platform || !VALID_PLATFORMS.has(platform) || !state) {
     return NextResponse.redirect(new URL("/app", req.url));
   }
 
@@ -27,6 +42,15 @@ export async function GET(req: NextRequest) {
 
   if (!workspace) {
     return NextResponse.redirect(new URL("/app", req.url));
+  }
+
+  // Critical Tenant Isolation Check: verify user is an OWNER or ADMIN of the target workspace
+  const memberCheck = await requireWorkspaceMember(workspace.id, auth.user.id, ["OWNER", "ADMIN"]);
+  if (memberCheck.error) {
+    return NextResponse.json(
+      { error: "Forbidden: You do not have permission to connect accounts to this workspace." },
+      { status: 403 }
+    );
   }
 
   try {
@@ -44,16 +68,19 @@ export async function GET(req: NextRequest) {
       refreshTokenEncrypted: result.refreshToken ? encryptToken(result.refreshToken) : undefined,
       tokenExpiresAt: result.tokenExpiresAt,
       scopes: result.scopes,
-      metadata: result.account.metadata || {},
+      metadata: {
+        ...(result.account.metadata || {}),
+        isMock: true,
+      },
       isActive: true,
     });
 
     await db.activity.log({
       workspaceId: workspace.id,
-      userId: session.id,
+      userId: auth.user.id,
       action: "SOCIAL_ACCOUNT_CONNECTED",
       entityType: "SOCIAL_ACCOUNT",
-      metadata: { platform, username: result.account.platformUsername },
+      metadata: { platform, username: result.account.platformUsername, isMock: true },
     });
 
     return NextResponse.redirect(
@@ -62,7 +89,10 @@ export async function GET(req: NextRequest) {
   } catch (err: unknown) {
     const error = err as Error;
     return NextResponse.redirect(
-      new URL(`/app/${workspace.slug}/social-accounts?error=${encodeURIComponent(error.message)}`, req.url)
+      new URL(
+        `/app/${workspace.slug}/social-accounts?error=${encodeURIComponent(error.message)}`,
+        req.url
+      )
     );
   }
 }

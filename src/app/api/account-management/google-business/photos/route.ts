@@ -1,41 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/auth";
-import { db } from "@/lib/db";
+import {
+  requireApiSession,
+  requireWorkspaceMember,
+  requireWorkspaceSocialAccount,
+} from "@/lib/authorization";
 import { GoogleBusinessManagementService } from "@/lib/account-management/google-business.service";
+import { gbpPhotoAddSchema, parseJsonBody } from "@/lib/validation";
 
 export async function POST(req: NextRequest) {
-  const session = getSessionFromRequest(req);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireApiSession(req);
+  if (auth.error) return auth.error;
+
+  const parsed = await parseJsonBody(req, gbpPhotoAddSchema);
+  if (parsed.error) return parsed.error;
+
+  const { workspaceId, socialAccountId, photo } = parsed.data;
+
+  const memberCheck = await requireWorkspaceMember(workspaceId, auth.user.id, ["OWNER", "ADMIN"]);
+  if (memberCheck.error) return memberCheck.error;
+
+  const ownership = await requireWorkspaceSocialAccount(
+    workspaceId,
+    socialAccountId,
+    "GOOGLE_BUSINESS"
+  );
+  if (ownership.error) return ownership.error;
 
   try {
-    const { workspaceId, socialAccountId, photo } = await req.json();
-
-    if (!workspaceId || !socialAccountId || !photo?.url) {
-      return NextResponse.json(
-        { error: "workspaceId, socialAccountId, and photo.url are required" },
-        { status: 400 }
-      );
-    }
-
-    const membership = await db.workspaces.checkMembership(workspaceId, session.id);
-    if (!membership) {
-      return NextResponse.json({ error: "Forbidden: Not a member of this workspace" }, { status: 403 });
-    }
-
-    if (membership.role !== "OWNER" && membership.role !== "ADMIN") {
-      return NextResponse.json(
-        { error: "Forbidden: Only workspace Owner or Admin can upload business photos" },
-        { status: 403 }
-      );
-    }
-
     const location = await GoogleBusinessManagementService.addPhoto(
       socialAccountId,
-      session.id,
+      auth.user.id,
       workspaceId,
-      photo
+      {
+        url: photo.url,
+        category: photo.category || "ADDITIONAL",
+        caption: photo.caption,
+      }
     );
 
     return NextResponse.json({ success: true, location });
@@ -46,10 +46,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const session = getSessionFromRequest(req);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = await requireApiSession(req);
+  if (auth.error) return auth.error;
 
   try {
     const { searchParams } = new URL(req.url);
@@ -64,21 +62,19 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const membership = await db.workspaces.checkMembership(workspaceId, session.id);
-    if (!membership) {
-      return NextResponse.json({ error: "Forbidden: Not a member of this workspace" }, { status: 403 });
-    }
+    const memberCheck = await requireWorkspaceMember(workspaceId, auth.user.id, ["OWNER", "ADMIN"]);
+    if (memberCheck.error) return memberCheck.error;
 
-    if (membership.role !== "OWNER" && membership.role !== "ADMIN") {
-      return NextResponse.json(
-        { error: "Forbidden: Only workspace Owner or Admin can delete business photos" },
-        { status: 403 }
-      );
-    }
+    const ownership = await requireWorkspaceSocialAccount(
+      workspaceId,
+      socialAccountId,
+      "GOOGLE_BUSINESS"
+    );
+    if (ownership.error) return ownership.error;
 
     const location = await GoogleBusinessManagementService.deletePhoto(
       socialAccountId,
-      session.id,
+      auth.user.id,
       workspaceId,
       photoId
     );

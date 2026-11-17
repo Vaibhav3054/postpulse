@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { db } from "@/lib/db";
 
 export const instant = false;
@@ -7,6 +8,18 @@ export const instant = false;
 export default async function AppRootRedirect() {
   const session = await getSessionUser();
   if (!session) {
+    redirect("/login");
+  }
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.id },
+    select: { id: true, status: true, tokenVersion: true },
+  });
+  if (
+    !dbUser ||
+    dbUser.status === "SUSPENDED" ||
+    (typeof session.tokenVersion === "number" && session.tokenVersion !== dbUser.tokenVersion)
+  ) {
     redirect("/login");
   }
 

@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { requireServerWorkspaceAccess } from "@/lib/authorization";
 import { db } from "@/lib/db";
 import { Header } from "@/components/layout/Header";
 import { ContentCalendar } from "@/components/calendar/ContentCalendar";
@@ -9,8 +9,7 @@ export default async function CalendarPage({
   params: Promise<{ workspaceSlug: string }>;
 }) {
   const { workspaceSlug } = await params;
-  const workspace = await db.workspaces.findBySlug(workspaceSlug);
-  if (!workspace) notFound();
+  const { workspace } = await requireServerWorkspaceAccess(workspaceSlug);
 
   const posts = await db.posts.listForWorkspace(workspace.id);
 

@@ -69,14 +69,20 @@ export function WorkspaceSettingsView({
           planCode,
         }),
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setActivePlanCode(planCode);
         setToastMessage(`Plan upgraded to ${SUBSCRIPTION_PLANS[planCode]?.name || planCode}!`);
         setTimeout(() => setToastMessage(null), 4000);
         router.refresh();
+      } else {
+        setToastMessage(data.error || "Unable to change plan directly.");
+        setTimeout(() => setToastMessage(null), 5000);
       }
     } catch (e) {
       console.error(e);
+      setToastMessage("Network error while updating plan.");
+      setTimeout(() => setToastMessage(null), 4000);
     } finally {
       setIsSwitchingPlan(false);
     }
