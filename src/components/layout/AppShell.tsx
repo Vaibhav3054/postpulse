@@ -102,7 +102,7 @@ export function AppShell({
         />
 
         {/* Main Page Area */}
-        <div className="flex-1 flex flex-col h-screen overflow-y-auto min-w-0 pb-16 md:pb-0">
+        <div className="flex-1 flex flex-col h-screen overflow-y-auto overflow-x-hidden min-w-0 pb-16 md:pb-0">
           {children}
         </div>
 

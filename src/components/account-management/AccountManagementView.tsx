@@ -97,7 +97,7 @@ export function AccountManagementView({
   ];
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6 pb-24 md:pb-12">
+    <div className="p-3 sm:p-6 max-w-6xl mx-auto space-y-6 pb-24 md:pb-12 w-full max-w-full overflow-x-hidden min-w-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5">
         <div className="space-y-1">
@@ -166,7 +166,7 @@ export function AccountManagementView({
       </div>
 
       {/* ACTIVE TAB CONTENT */}
-      <div className="pt-2">
+      <div className="pt-2 w-full max-w-full min-w-0">
         {/* GOOGLE BUSINESS PROFILE */}
         {selectedPlatform === "GOOGLE_BUSINESS" && (
           <>

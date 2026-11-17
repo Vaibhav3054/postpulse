@@ -386,7 +386,7 @@ export function GoogleBusinessManager({
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full min-w-0">
       {/* Toast Feedback */}
       {toastMessage && (
         <div className="p-3.5 rounded-xl bg-emerald-500 text-white text-xs font-semibold shadow-lg flex items-center justify-between">
@@ -413,8 +413,8 @@ export function GoogleBusinessManager({
       )}
 
       {/* Profile Overview Header Card */}
-      <div className="p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
+      <div className="p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 w-full max-w-full min-w-0">
+        <div className="flex items-center gap-3.5 min-w-0 w-full md:w-auto">
           <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-[#4285F4] font-extrabold text-xl flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
             {location.logoPhotoUrl ? (
               <img src={location.logoPhotoUrl} alt="Logo" className="w-full h-full object-cover" />
@@ -422,25 +422,27 @@ export function GoogleBusinessManager({
               "G"
             )}
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-zinc-900 dark:text-white">{location.locationName}</h3>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white truncate">
+                {location.locationName}
+              </h3>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0 whitespace-nowrap">
                 Verified Listing
               </span>
             </div>
-            <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500 mt-1">
-              <span className="flex items-center gap-1 font-semibold text-amber-500">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-zinc-500 mt-1">
+              <span className="flex items-center gap-1 font-semibold text-amber-500 shrink-0">
                 ★ {location.rating || 4.9}
                 <span className="text-zinc-400 font-normal">({location.reviewCount} Google reviews)</span>
               </span>
-              <span>•</span>
+              <span className="hidden sm:inline">•</span>
               <span className="text-zinc-400 truncate max-w-xs">{location.address || "Indiranagar, Bangalore"}</span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
           <a
             href={location.websiteUrl || "https://maps.google.com"}
             target="_blank"
@@ -454,7 +456,7 @@ export function GoogleBusinessManager({
       </div>
 
       {/* Sub-Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-2 overflow-x-auto scrollbar-none -mx-1 px-1">
+      <div className="flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-2 overflow-x-auto scrollbar-none w-full max-w-full min-w-0">
         <button
           onClick={() => setActiveTab("info")}
           className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 text-xs font-semibold rounded-lg transition-all shrink-0 whitespace-nowrap ${
@@ -710,13 +712,13 @@ export function GoogleBusinessManager({
               {regularHours.map((d) => (
                 <div
                   key={d.day}
-                  className={`p-3 rounded-xl border flex items-center justify-between gap-4 transition-all ${
+                  className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 transition-all ${
                     d.isOpen
                       ? "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900"
                       : "border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-950/40 opacity-70"
                   }`}
                 >
-                  <div className="flex items-center gap-3 w-36">
+                  <div className="flex items-center gap-3 w-full sm:w-36">
                     <input
                       type="checkbox"
                       id={`day_${d.day}`}
@@ -770,9 +772,9 @@ export function GoogleBusinessManager({
               {specialHours.map((sh, idx) => (
                 <div
                   key={sh.id || idx}
-                  className="p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/30 flex items-center justify-between gap-3 text-xs"
+                  className="p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 text-xs"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                     <span className="font-mono text-zinc-500 text-[11px]">{sh.date}</span>
                     <span className="font-semibold text-zinc-900 dark:text-white">{sh.label}</span>
                   </div>
