@@ -64,7 +64,7 @@ export function AccountManagementView({
   const platformTabs = [
     {
       platform: "GOOGLE_BUSINESS" as const,
-      name: "Google Business Profile",
+      name: "Google Business",
       icon: "G",
       bg: "bg-[#4285F4] text-white",
       isConnected: Boolean(gbpAccount),
@@ -80,7 +80,7 @@ export function AccountManagementView({
     },
     {
       platform: "INSTAGRAM" as const,
-      name: "Instagram Professional",
+      name: "Instagram",
       icon: "I",
       bg: "bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white",
       isConnected: Boolean(igAccount),
@@ -88,7 +88,7 @@ export function AccountManagementView({
     },
     {
       platform: "LINKEDIN" as const,
-      name: "LinkedIn Organizations",
+      name: "LinkedIn",
       icon: "in",
       bg: "bg-[#0A66C2] text-white",
       isConnected: Boolean(liAccount),
@@ -99,22 +99,22 @@ export function AccountManagementView({
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6 pb-24 md:pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h2 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white">
-              Account Management Dashboard
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">
+              Account Management
             </h2>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-mono">
+            <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700/60">
               {workspaceName}
             </span>
           </div>
-          <p className="text-xs text-zinc-500 mt-1 max-w-2xl">
+          <p className="text-xs sm:text-sm text-zinc-500 max-w-2xl">
             Manage store hours, Google Maps details, customer review replies, and official profile metadata across your authorized channels.
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold self-start sm:self-auto shrink-0">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold self-start sm:self-auto shrink-0 shadow-sm">
           <ShieldCheck className="w-4 h-4" />
           <span>Official OAuth Vault Active</span>
         </div>
@@ -153,10 +153,10 @@ export function AccountManagementView({
               </div>
 
               <div className="mt-3">
-                <div className="text-xs font-bold text-zinc-900 dark:text-white truncate">
+                <div className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-white leading-tight">
                   {tab.name}
                 </div>
-                <div className="text-[11px] text-zinc-400 truncate mt-0.5">
+                <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-1">
                   {tab.accountDisplayName || "Not connected"}
                 </div>
               </div>

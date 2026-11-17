@@ -79,7 +79,7 @@ export function Header({
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm shadow-indigo-600/30 transition-colors"
           >
             <PenSquare className="w-3.5 h-3.5" />
-            <span className="hidden xs:inline">New Post</span>
+            <span className="hidden sm:inline">New Post</span>
           </a>
         )}
       </div>

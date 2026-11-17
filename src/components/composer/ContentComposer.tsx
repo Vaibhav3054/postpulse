@@ -708,8 +708,8 @@ export function ContentComposer({
 
       {/* RIGHT PANE: Live Interactive Mockup Previews */}
       <div
-        className={`w-full lg:w-2/5 h-full p-4 sm:p-6 bg-zinc-50/50 dark:bg-zinc-950/30 overflow-y-auto ${
-          mobileTab === "preview" ? "block" : "hidden lg:block"
+        className={`w-full lg:w-2/5 h-full p-3 sm:p-6 bg-zinc-50/50 dark:bg-zinc-950/30 flex flex-col min-h-0 overflow-hidden ${
+          mobileTab === "preview" ? "flex" : "hidden lg:flex"
         }`}
       >
         <LiveMockupPreview

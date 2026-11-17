@@ -440,12 +440,12 @@ export function GoogleBusinessManager({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-end md:self-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <a
             href={location.websiteUrl || "https://maps.google.com"}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-blue-400 bg-zinc-50 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 transition-colors"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-blue-400 bg-zinc-50 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 transition-colors w-full sm:w-auto"
           >
             <ExternalLink className="w-3.5 h-3.5" />
             <span>View on Google Maps</span>
@@ -454,10 +454,10 @@ export function GoogleBusinessManager({
       </div>
 
       {/* Sub-Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-2 overflow-x-auto scrollbar-none">
+      <div className="flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-2 overflow-x-auto scrollbar-none -mx-1 px-1">
         <button
           onClick={() => setActiveTab("info")}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+          className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 text-xs font-semibold rounded-lg transition-all shrink-0 whitespace-nowrap ${
             activeTab === "info"
               ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-sm"
               : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
@@ -469,7 +469,7 @@ export function GoogleBusinessManager({
 
         <button
           onClick={() => setActiveTab("hours")}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+          className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 text-xs font-semibold rounded-lg transition-all shrink-0 whitespace-nowrap ${
             activeTab === "hours"
               ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-sm"
               : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
@@ -481,7 +481,7 @@ export function GoogleBusinessManager({
 
         <button
           onClick={() => setActiveTab("reviews")}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+          className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 text-xs font-semibold rounded-lg transition-all shrink-0 whitespace-nowrap ${
             activeTab === "reviews"
               ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-sm"
               : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
@@ -489,14 +489,14 @@ export function GoogleBusinessManager({
         >
           <Star className="w-3.5 h-3.5 text-amber-500" />
           <span>Customer Reviews</span>
-          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-bold">
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-bold">
             {reviews.length}
           </span>
         </button>
 
         <button
           onClick={() => setActiveTab("photos")}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-all ${
+          className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 text-xs font-semibold rounded-lg transition-all shrink-0 whitespace-nowrap ${
             activeTab === "photos"
               ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-sm"
               : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
@@ -504,7 +504,7 @@ export function GoogleBusinessManager({
         >
           <ImageIcon className="w-3.5 h-3.5" />
           <span>Store Photo Gallery</span>
-          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold">
+          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold">
             {photos.length}
           </span>
         </button>

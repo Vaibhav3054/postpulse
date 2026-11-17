@@ -58,6 +58,8 @@ export function Sidebar({
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const slug = currentWorkspace.slug;
+  const isPlanUuid = !currentWorkspace.planName || currentWorkspace.planName.includes("-") || currentWorkspace.planName.length > 20;
+  const displayPlanName = isPlanUuid ? "Pro Plan" : currentWorkspace.planName;
 
   const navItems = [
     {
@@ -181,7 +183,7 @@ export function Sidebar({
                   {currentWorkspace.name}
                 </div>
                 <div className="text-[10px] text-zinc-500 dark:text-zinc-400 capitalize">
-                  {currentWorkspace.planName}
+                  {displayPlanName}
                 </div>
               </div>
             </div>
@@ -209,7 +211,7 @@ export function Sidebar({
                 >
                   <span className="truncate">{ws.name}</span>
                   <span className="text-[10px] text-zinc-400 uppercase font-mono">
-                    {ws.planId}
+                    {ws.planName && !ws.planName.includes("-") ? ws.planName : "PRO"}
                   </span>
                 </button>
               ))}
@@ -240,6 +242,7 @@ export function Sidebar({
               <a
                 key={item.href}
                 href={item.href}
+                onClick={onCloseMobile}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all mb-3 ${
                   isActive
                     ? "bg-indigo-600 text-white shadow-sm shadow-indigo-600/30"
@@ -259,6 +262,7 @@ export function Sidebar({
             <a
               key={item.href}
               href={item.href}
+              onClick={onCloseMobile}
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 isActive
                   ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white"
@@ -277,7 +281,7 @@ export function Sidebar({
         <div className="flex items-center justify-between text-zinc-900 dark:text-white font-medium mb-1">
           <span className="flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-            {currentWorkspace.planName}
+            {displayPlanName}
           </span>
           <a
             href={`/app/${slug}/settings`}

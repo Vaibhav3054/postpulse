@@ -146,6 +146,10 @@ export function ContentCalendar({ posts: initialPosts, workspaceSlug }: ContentC
         return "bg-red-600";
       case "LINKEDIN":
         return "bg-[#0A66C2]";
+      case "GOOGLE_BUSINESS":
+        return "bg-[#4285F4]";
+      default:
+        return "bg-zinc-500";
     }
   };
 

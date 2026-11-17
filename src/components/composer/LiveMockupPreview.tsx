@@ -106,10 +106,10 @@ export function LiveMockupPreview({
       </div>
 
       {/* Mockup Card Container */}
-      <div className="flex-1 p-6 overflow-y-auto flex items-center justify-center">
+      <div className="flex-1 p-4 sm:p-6 pb-12 sm:pb-8 overflow-y-auto flex flex-col items-center justify-start min-h-0">
         {/* INSTAGRAM MOCKUP */}
         {platform === "INSTAGRAM" && (
-          <div className="w-full max-w-sm bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-lg overflow-hidden text-xs">
+          <div className="w-full max-w-sm my-auto bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-lg overflow-hidden text-xs shrink-0 mb-6">
             {/* Header */}
             <div className="p-3 flex items-center justify-between border-b border-zinc-100 dark:border-zinc-900">
               <div className="flex items-center gap-2.5">
@@ -172,7 +172,7 @@ export function LiveMockupPreview({
 
         {/* FACEBOOK MOCKUP */}
         {platform === "FACEBOOK" && (
-          <div className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-lg overflow-hidden text-xs">
+          <div className="w-full max-w-sm my-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-lg overflow-hidden text-xs shrink-0 mb-6">
             <div className="p-3.5 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-full bg-[#1877F2] text-white font-bold flex items-center justify-center shrink-0 overflow-hidden">
@@ -225,7 +225,7 @@ export function LiveMockupPreview({
 
         {/* YOUTUBE MOCKUP */}
         {platform === "YOUTUBE" && (
-          <div className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-lg overflow-hidden text-xs">
+          <div className="w-full max-w-sm my-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-lg overflow-hidden text-xs shrink-0 mb-6">
             <div className="relative aspect-video bg-zinc-900 flex items-center justify-center">
               {hasMedia ? (
                 <img src={primaryMedia} alt="Media" className="w-full h-full object-cover" />
@@ -267,7 +267,7 @@ export function LiveMockupPreview({
 
         {/* LINKEDIN MOCKUP */}
         {platform === "LINKEDIN" && (
-          <div className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-lg overflow-hidden text-xs">
+          <div className="w-full max-w-sm my-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-lg overflow-hidden text-xs shrink-0 mb-6">
             <div className="p-3.5 flex items-start gap-2.5">
               <div className="w-10 h-10 rounded-full bg-[#0A66C2] text-white font-bold flex items-center justify-center shrink-0 overflow-hidden">
                 {accountAvatar ? (
@@ -325,7 +325,7 @@ export function LiveMockupPreview({
 
         {/* GOOGLE BUSINESS PROFILE MOCKUP (Google Maps & Search Update) */}
         {platform === "GOOGLE_BUSINESS" && (
-          <div className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-lg overflow-hidden text-xs">
+          <div className="w-full max-w-sm my-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-lg overflow-hidden text-xs shrink-0 mb-6">
             {/* Google Search / Maps Header */}
             <div className="p-3.5 border-b border-zinc-100 dark:border-zinc-800 flex items-start justify-between gap-2.5">
               <div className="flex items-center gap-2.5 min-w-0">

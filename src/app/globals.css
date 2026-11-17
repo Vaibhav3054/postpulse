@@ -2,6 +2,7 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     --background: #fafafa;
     --foreground: #09090b;
     --card: #ffffff;
@@ -16,7 +17,9 @@
     --accent-foreground: #18181b;
   }
 
+  html.dark,
   .dark {
+    color-scheme: dark;
     --background: #09090b;
     --foreground: #f4f4f5;
     --card: #121215;
@@ -32,13 +35,22 @@
   }
 }
 
+html {
+  color-scheme: dark;
+}
+
 body {
   background-color: var(--background);
   color: var(--foreground);
   font-feature-settings: "rlig" 1, "calt" 1;
 }
 
-/* Custom crisp scrollbars */
+/* Custom crisp dark scrollbars across Chrome, Edge, Safari, Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3f3f46 transparent;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -47,9 +59,9 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d4d4d8;
-  border-radius: 3px;
-}
-.dark ::-webkit-scrollbar-thumb {
   background: #3f3f46;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
 }

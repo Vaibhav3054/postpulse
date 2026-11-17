@@ -54,11 +54,15 @@ export function DashboardOverview({
         return <span className="w-2 h-2 rounded-full bg-red-600 inline-block" />;
       case "LINKEDIN":
         return <span className="w-2 h-2 rounded-full bg-[#0A66C2] inline-block" />;
+      case "GOOGLE_BUSINESS":
+        return <span className="w-2 h-2 rounded-full bg-[#4285F4] inline-block" />;
+      default:
+        return <span className="w-2 h-2 rounded-full bg-zinc-500 inline-block" />;
     }
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
       {/* Welcome Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5">
         <div>

@@ -102,7 +102,7 @@ export function WorkspaceSettingsView({
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-8">
       {toastMessage && (
         <div className="fixed top-20 right-6 z-50 p-3 bg-emerald-600 text-white rounded-xl shadow-xl text-xs font-semibold animate-fade-in">
           {toastMessage}
