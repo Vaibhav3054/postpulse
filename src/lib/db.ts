@@ -139,13 +139,27 @@ export const db = {
         where: { ownerId: data.ownerId },
       });
 
-      if (userWorkspaces >= 50) {
-        throw new QuotaExceededError("workspaces", 50, userWorkspaces, "agency");
-      }
+      // Enforce customer's active subscription maxWorkspaces limit (1 Free / 3 Pro / 50 Agency)
+      const activeSub = await prisma.subscription.findFirst({
+        where: {
+          userId: data.ownerId,
+          status: { in: ["ACTIVE", "AUTHENTICATED"] },
+        },
+        include: { plan: true },
+        orderBy: { createdAt: "desc" },
+      });
 
       const freePlan = await prisma.subscriptionPlan.findUnique({
         where: { code: "free" },
       });
+
+      const effectivePlan = activeSub?.plan || freePlan;
+      const maxWorkspaces = effectivePlan?.maxWorkspaces || 1;
+      const planCode = effectivePlan?.code || "free";
+
+      if (userWorkspaces >= maxWorkspaces) {
+        throw new QuotaExceededError("workspaces", maxWorkspaces, userWorkspaces, planCode);
+      }
 
       let uniqueSlug = data.slug.toLowerCase().replace(/[^a-z0-9-]/g, "-");
       const existing = await prisma.workspace.findUnique({ where: { slug: uniqueSlug } });
@@ -158,7 +172,7 @@ export const db = {
           name: data.name,
           slug: uniqueSlug,
           ownerId: data.ownerId,
-          planId: freePlan ? freePlan.id : "",
+          planId: effectivePlan?.id || "",
           members: {
             create: {
               userId: data.ownerId,

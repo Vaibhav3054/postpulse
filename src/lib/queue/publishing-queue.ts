@@ -6,6 +6,7 @@ import { getSocialProvider } from "../social-providers/registry";
 import { decryptToken, encryptToken } from "../crypto";
 import { SocialPlatformType } from "../social-providers/types";
 import { createWorkspaceNotification } from "../notifications";
+import { expireElapsedSubscriptions } from "../billing/subscription-service";
 
 export interface PublishJobData {
   postId: string;
@@ -526,6 +527,11 @@ export async function dispatchDueScheduledPosts(): Promise<DispatchSummary> {
   const now = new Date();
   const staleCutoff = new Date(now.getTime() - STALE_LOCK_MS);
   const workerId = `dispatch_${crypto.randomBytes(4).toString("hex")}`;
+
+  // Step 0: Automatically expire elapsed paid & complimentary subscriptions back to Free 24/7
+  await expireElapsedSubscriptions().catch((expErr) => {
+    console.error("[Dispatcher] Subscription expiry sweep failed:", expErr);
+  });
 
   // Step 1: Recover targets stuck in PUBLISHING from crashed/timed-out workers
   const staleRecovery = await prisma.postPlatformTarget.updateMany({
