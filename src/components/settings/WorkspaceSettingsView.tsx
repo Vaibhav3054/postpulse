@@ -15,6 +15,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { PlanLimits } from "@/lib/quota";
+import { TeamManagementCard } from "./TeamManagementCard";
 
 interface ActiveSubscriptionInfo {
   id: string;
@@ -318,6 +319,9 @@ export function WorkspaceSettingsView({
           </button>
         </form>
       </div>
+
+      {/* Team Members & Invitations */}
+      <TeamManagementCard workspaceId={workspace.id} currentRole={role} />
 
       {/* Subscription & Razorpay Billing Section */}
       <div className="space-y-4">
