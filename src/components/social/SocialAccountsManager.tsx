@@ -77,6 +77,14 @@ export function SocialAccountsManager({
       officialApi: "LinkedIn Community Management / Share API",
       prereq: "Personal LinkedIn account or Company Page admin privileges.",
     },
+    {
+      platform: "GOOGLE_BUSINESS" as const,
+      name: "Google Business Profile",
+      tagline: "Publish local updates, offers & photo posts to Google Maps & Search",
+      badgeColor: "bg-[#4285F4] text-white",
+      officialApi: "Google My Business & Local Posts API v4",
+      prereq: "Verified Google Business Profile. Ideal for Indian clinics, restaurants & retail shops.",
+    },
   ];
 
   const handleConnect = async (platform: SocialPlatformType) => {

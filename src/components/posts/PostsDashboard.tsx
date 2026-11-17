@@ -316,6 +316,8 @@ export function PostsDashboard({
         return <span className="w-2.5 h-2.5 rounded-full bg-red-600 inline-block" />;
       case "LINKEDIN":
         return <span className="w-2.5 h-2.5 rounded-full bg-[#0A66C2] inline-block" />;
+      case "GOOGLE_BUSINESS":
+        return <span className="w-2.5 h-2.5 rounded-full bg-[#4285F4] inline-block" />;
     }
   };
 

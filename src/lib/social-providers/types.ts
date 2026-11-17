@@ -1,4 +1,4 @@
-export type SocialPlatformType = "INSTAGRAM" | "FACEBOOK" | "YOUTUBE" | "LINKEDIN";
+export type SocialPlatformType = "INSTAGRAM" | "FACEBOOK" | "YOUTUBE" | "LINKEDIN" | "GOOGLE_BUSINESS";
 
 export interface AccountDetails {
   platformAccountId: string;
@@ -31,6 +31,18 @@ export interface PublishPostPayload {
     locationId?: string;
     // Facebook specific
     link?: string;
+    // Google Business Profile specific
+    actionType?: "BOOK" | "ORDER" | "SHOP" | "LEARN_MORE" | "SIGN_UP" | "CALL";
+    actionUrl?: string;
+    callToAction?: {
+      actionType: "BOOK" | "ORDER" | "SHOP" | "LEARN_MORE" | "SIGN_UP" | "CALL";
+      url?: string;
+    };
+    offerDetails?: {
+      couponCode?: string;
+      redeemOnlineUrl?: string;
+      termsConditions?: string;
+    };
   };
 }
 

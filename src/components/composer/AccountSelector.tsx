@@ -54,6 +54,11 @@ export function AccountSelector({
           bg: "bg-[#0A66C2] text-white",
           label: "LinkedIn",
         };
+      case "GOOGLE_BUSINESS":
+        return {
+          bg: "bg-[#4285F4] text-white",
+          label: "Google Business",
+        };
     }
   };
 

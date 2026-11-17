@@ -56,6 +56,7 @@ export function AnalyticsView({ posts, logs, workspaceName }: AnalyticsViewProps
     FACEBOOK: 0,
     YOUTUBE: 0,
     LINKEDIN: 0,
+    GOOGLE_BUSINESS: 0,
   };
 
   const platformPostCounts: Record<string, number> = {
@@ -63,6 +64,7 @@ export function AnalyticsView({ posts, logs, workspaceName }: AnalyticsViewProps
     FACEBOOK: 0,
     YOUTUBE: 0,
     LINKEDIN: 0,
+    GOOGLE_BUSINESS: 0,
   };
 
   posts.forEach((p) => {
@@ -364,6 +366,8 @@ export function AnalyticsView({ posts, logs, workspaceName }: AnalyticsViewProps
                           ? "bg-blue-600"
                           : platform === "YOUTUBE"
                           ? "bg-red-600"
+                          : platform === "GOOGLE_BUSINESS"
+                          ? "bg-[#4285F4]"
                           : "bg-[#0A66C2]"
                       }`}
                       style={{ width: `${pct}%` }}

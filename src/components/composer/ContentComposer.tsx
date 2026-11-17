@@ -53,6 +53,8 @@ export function ContentComposer({
   const [customCaptions, setCustomCaptions] = useState<Record<string, string>>({});
   const [youtubeTitle, setYoutubeTitle] = useState("");
   const [youtubePrivacy, setYoutubePrivacy] = useState<"public" | "unlisted" | "private">("public");
+  const [googleActionType, setGoogleActionType] = useState<"LEARN_MORE" | "CALL" | "BOOK" | "ORDER" | "SHOP" | "SIGN_UP">("LEARN_MORE");
+  const [googleActionUrl, setGoogleActionUrl] = useState("");
   const [expandedPlatformOverrides, setExpandedPlatformOverrides] = useState<Record<string, boolean>>({});
 
   // Scheduling state
@@ -194,6 +196,7 @@ export function ContentComposer({
       const targets = selectedAccounts.map((acc) => {
         const customCap = customCaptions[acc.id];
         const isYT = acc.platform === "YOUTUBE";
+        const isGBP = acc.platform === "GOOGLE_BUSINESS";
         return {
           socialAccountId: acc.id,
           platform: acc.platform,
@@ -202,6 +205,11 @@ export function ContentComposer({
             ? {
                 title: youtubeTitle.trim() || commonCaption.substring(0, 80) || "Video Title",
                 privacyStatus: youtubePrivacy,
+              }
+            : isGBP
+            ? {
+                actionType: googleActionType,
+                actionUrl: googleActionUrl.trim() || undefined,
               }
             : {},
         };
@@ -467,6 +475,51 @@ export function ContentComposer({
                         </div>
                       )}
 
+                      {acc.platform === "GOOGLE_BUSINESS" && (
+                        <div className="space-y-2">
+                          <label className="block text-[11px] font-semibold text-zinc-700 dark:text-zinc-300">
+                            Google Action Button (CTA)
+                          </label>
+                          <div className="grid grid-cols-3 gap-1.5 text-xs">
+                            {[
+                              { id: "LEARN_MORE", label: "🌐 Learn More" },
+                              { id: "CALL", label: "📞 Call Now" },
+                              { id: "BOOK", label: "📅 Book" },
+                              { id: "ORDER", label: "🛍️ Order" },
+                              { id: "SHOP", label: "🛒 Shop" },
+                              { id: "SIGN_UP", label: "📝 Sign Up" },
+                            ].map((cta) => (
+                              <button
+                                key={cta.id}
+                                type="button"
+                                onClick={() => setGoogleActionType(cta.id as any)}
+                                className={`px-2 py-1.5 rounded-lg border text-[11px] font-medium transition-all text-center ${
+                                  googleActionType === cta.id
+                                    ? "bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 font-semibold"
+                                    : "border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                }`}
+                              >
+                                {cta.label}
+                              </button>
+                            ))}
+                          </div>
+                          {googleActionType !== "CALL" && (
+                            <div className="mt-2">
+                              <label className="block text-[10px] text-zinc-500 mb-1">
+                                Action Destination URL
+                              </label>
+                              <input
+                                type="url"
+                                placeholder="https://yourwebsite.com/booking or /menu"
+                                value={googleActionUrl}
+                                onChange={(e) => setGoogleActionUrl(e.target.value)}
+                                className="w-full px-3 py-1.5 text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-zinc-900 dark:text-white"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       <div>
                         <label className="block text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
                           Custom Caption Override
@@ -669,6 +722,8 @@ export function ContentComposer({
           accountUsername={activeAccount?.platformUsername || "alexrivera_official"}
           accountAvatar={activeAccount?.avatarUrl}
           youtubeTitle={youtubeTitle}
+          googleActionType={googleActionType}
+          googleActionUrl={googleActionUrl}
         />
       </div>
     </div>

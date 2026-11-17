@@ -24,6 +24,7 @@ enum SocialPlatform {
   FACEBOOK
   YOUTUBE
   LINKEDIN
+  GOOGLE_BUSINESS
 }
 
 enum MediaType {

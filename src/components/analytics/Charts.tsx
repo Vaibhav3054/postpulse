@@ -8,6 +8,7 @@ export const PLATFORM_COLORS: Record<string, string> = {
   FACEBOOK: "#1877F2",
   YOUTUBE: "#FF0000",
   LINKEDIN: "#0A66C2",
+  GOOGLE_BUSINESS: "#4285F4",
 };
 
 interface PieSlice {
