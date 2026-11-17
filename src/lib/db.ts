@@ -97,8 +97,8 @@ export const db = {
         slug: m.workspace.slug,
         logoUrl: m.workspace.logoUrl,
         ownerId: m.workspace.ownerId,
-        planId: m.workspace.plan?.code || "pro",
-        planName: m.workspace.plan?.name || "Pro Plan",
+        planId: m.workspace.plan?.code || "free",
+        planName: m.workspace.plan?.name || "Free Starter",
         role: m.role,
         createdAt: m.workspace.createdAt,
         updatedAt: m.workspace.updatedAt,
@@ -285,6 +285,15 @@ export const db = {
 
     async findById(id: string) {
       const a = await prisma.mediaAsset.findUnique({ where: { id } });
+      if (!a) return null;
+      return {
+        ...a,
+        fileSizeBytes: Number(a.fileSizeBytes),
+      };
+    },
+
+    async findByStorageKey(storageKey: string) {
+      const a = await prisma.mediaAsset.findUnique({ where: { storageKey } });
       if (!a) return null;
       return {
         ...a,

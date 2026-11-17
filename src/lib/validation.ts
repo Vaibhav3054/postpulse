@@ -15,6 +15,69 @@ export const ALLOWED_MEDIA_MIME_TYPES = new Set([
 export const MAX_IMAGE_SIZE_BYTES = 15 * 1024 * 1024; // 15 MB
 export const MAX_VIDEO_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
 
+export function getMaxSizeForMime(mimeType: string): number {
+  return mimeType.toLowerCase().startsWith("video/")
+    ? MAX_VIDEO_SIZE_BYTES
+    : MAX_IMAGE_SIZE_BYTES;
+}
+
+/**
+ * Verifies binary file magic bytes match the declared MIME type to block spoofed uploads
+ * (e.g. HTML/JS/EXE disguised with Content-Type: image/jpeg).
+ */
+export function hasValidMediaMagicBytes(buffer: Buffer, mimeType: string): boolean {
+  if (buffer.length < 4) return false;
+  const mime = mimeType.toLowerCase();
+
+  // JPEG: FF D8 FF
+  if (mime === "image/jpeg" || mime === "image/jpg") {
+    return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  }
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (mime === "image/png") {
+    return (
+      buffer.length >= 8 &&
+      buffer[0] === 0x89 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x4e &&
+      buffer[3] === 0x47
+    );
+  }
+  // GIF: GIF87a or GIF89a
+  if (mime === "image/gif") {
+    const header = buffer.subarray(0, 6).toString("ascii");
+    return header === "GIF87a" || header === "GIF89a";
+  }
+  // WebP: RIFF....WEBP
+  if (mime === "image/webp") {
+    return (
+      buffer.length >= 12 &&
+      buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+      buffer.subarray(8, 12).toString("ascii") === "WEBP"
+    );
+  }
+  // MP4 / MOV (ISO Base Media File Format): bytes 4..8 === "ftyp"
+  if (mime === "video/mp4" || mime === "video/quicktime") {
+    return (
+      buffer.length >= 12 &&
+      (buffer.subarray(4, 8).toString("ascii") === "ftyp" ||
+        buffer.subarray(4, 8).toString("ascii") === "moov" ||
+        buffer.subarray(4, 8).toString("ascii") === "wide")
+    );
+  }
+  // WebM / EBML: 1A 45 DF A3
+  if (mime === "video/webm") {
+    return (
+      buffer[0] === 0x1a &&
+      buffer[1] === 0x45 &&
+      buffer[2] === 0xdf &&
+      buffer[3] === 0xa3
+    );
+  }
+
+  return false;
+}
+
 /**
  * Validates storageKey format strictly: workspaces/{workspaceId}/{filename}
  * Blocks path traversal (..), backslashes, leading slashes, and control characters.

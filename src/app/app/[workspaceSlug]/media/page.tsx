@@ -1,6 +1,6 @@
 import { requireServerWorkspaceAccess } from "@/lib/authorization";
 import { db } from "@/lib/db";
-import { SUBSCRIPTION_PLANS } from "@/lib/quota";
+import { resolveWorkspacePlan } from "@/lib/quota";
 import { Header } from "@/components/layout/Header";
 import { MediaLibrary } from "@/components/media/MediaLibrary";
 
@@ -13,7 +13,7 @@ export default async function MediaPage({
   const { workspace } = await requireServerWorkspaceAccess(workspaceSlug);
 
   const media = await db.mediaAssets.listForWorkspace(workspace.id);
-  const plan = SUBSCRIPTION_PLANS[workspace.planId] || SUBSCRIPTION_PLANS.free;
+  const plan = resolveWorkspacePlan(workspace.plan);
 
   const formattedMedia = media.map((m) => ({
     id: m.id,

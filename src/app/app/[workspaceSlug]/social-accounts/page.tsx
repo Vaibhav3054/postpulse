@@ -1,6 +1,6 @@
 import { requireServerWorkspaceAccess } from "@/lib/authorization";
 import { db } from "@/lib/db";
-import { SUBSCRIPTION_PLANS } from "@/lib/quota";
+import { resolveWorkspacePlan } from "@/lib/quota";
 import { Header } from "@/components/layout/Header";
 import { SocialAccountsManager } from "@/components/social/SocialAccountsManager";
 
@@ -13,7 +13,7 @@ export default async function SocialAccountsPage({
   const { workspace } = await requireServerWorkspaceAccess(workspaceSlug);
 
   const accounts = await db.socialAccounts.listForWorkspace(workspace.id);
-  const plan = SUBSCRIPTION_PLANS[workspace.planId] || SUBSCRIPTION_PLANS.free;
+  const plan = resolveWorkspacePlan(workspace.plan);
 
   const formattedAccounts = accounts.map((a) => ({
     id: a.id,

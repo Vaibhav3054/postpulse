@@ -41,6 +41,18 @@ export function MediaLibrary({ initialMedia, workspaceId, maxStorageMb = 2048 }:
     if (!files || files.length === 0) return;
 
     const file = files[0];
+    const mimeType = file.type || "image/jpeg";
+    const isVideo = mimeType.startsWith("video/");
+    const maxBytes = isVideo ? 100 * 1024 * 1024 : 15 * 1024 * 1024;
+
+    if (file.size > maxBytes) {
+      setError(
+        `File is too large. Maximum allowed size is ${isVideo ? "100 MB for videos" : "15 MB for images"}.`
+      );
+      e.target.value = "";
+      return;
+    }
+
     setIsUploading(true);
     setError(null);
 
@@ -51,26 +63,30 @@ export function MediaLibrary({ initialMedia, workspaceId, maxStorageMb = 2048 }:
         body: JSON.stringify({
           workspaceId,
           fileName: file.name,
-          mimeType: file.type || "image/jpeg",
+          mimeType,
           fileSizeBytes: file.size,
         }),
       });
-      const urlData = await urlRes.json();
+      const urlData = await urlRes.json().catch(() => ({}));
       if (!urlRes.ok) {
         throw new Error(urlData.error || "Upload initiation failed");
       }
 
-      if (urlData.isDirectUpload) {
-        await fetch(urlData.uploadUrl, {
-          method: "PUT",
-          headers: { "Content-Type": file.type },
-          body: file,
-        });
-      } else {
-        await fetch(urlData.uploadUrl, {
-          method: "PUT",
-          body: await file.arrayBuffer(),
-        });
+      const uploadRes = urlData.isDirectUpload
+        ? await fetch(urlData.uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": mimeType },
+            body: file,
+          })
+        : await fetch(urlData.uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": mimeType },
+            body: await file.arrayBuffer(),
+          });
+
+      if (!uploadRes.ok) {
+        const uploadErr = await uploadRes.json().catch(() => ({}));
+        throw new Error(uploadErr.error || `File upload failed (HTTP ${uploadRes.status})`);
       }
 
       const saveRes = await fetch("/api/media", {
@@ -81,29 +97,37 @@ export function MediaLibrary({ initialMedia, workspaceId, maxStorageMb = 2048 }:
           fileName: file.name,
           storageKey: urlData.storageKey,
           publicUrl: urlData.publicUrl,
-          mimeType: file.type,
+          mimeType,
           fileSizeBytes: file.size,
         }),
       });
-      const saveData = await saveRes.json();
-      if (saveRes.ok && saveData.asset) {
-        setMedia((prev) => [saveData.asset, ...prev]);
+      const saveData = await saveRes.json().catch(() => ({}));
+      if (!saveRes.ok || !saveData.asset) {
+        throw new Error(saveData.error || "Failed to register uploaded media asset");
       }
+      setMedia((prev) => [saveData.asset, ...prev]);
     } catch (err: unknown) {
-      const e = err as Error;
-      setError(e.message);
+      const errObj = err as Error;
+      setError(errObj.message || "Media upload failed");
     } finally {
       setIsUploading(false);
+      e.target.value = "";
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this media asset?")) return;
+    setError(null);
     try {
-      await fetch(`/api/media/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/media/${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "Failed to delete media asset.");
+        return;
+      }
       setMedia((prev) => prev.filter((m) => m.id !== id));
-    } catch (e) {
-      console.error(e);
+    } catch {
+      setError("Network error while deleting media asset.");
     }
   };
 
@@ -115,7 +139,7 @@ export function MediaLibrary({ initialMedia, workspaceId, maxStorageMb = 2048 }:
           <div className="flex items-center justify-between text-xs font-semibold text-zinc-900 dark:text-white">
             <span className="flex items-center gap-1.5">
               <HardDrive className="w-4 h-4 text-indigo-500" />
-              Cloudflare R2 Storage Usage
+              Cloud Media Storage Usage
             </span>
             <span>
               {totalMb} MB of {maxStorageMb} MB ({usagePercent}%)

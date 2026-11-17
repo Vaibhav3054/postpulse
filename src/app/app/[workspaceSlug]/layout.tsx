@@ -19,8 +19,8 @@ export default async function WorkspaceLayout({
     id: workspace.id,
     name: workspace.name,
     slug: workspace.slug,
-    planId: workspace.plan?.code || "pro",
-    planName: workspace.plan?.name || "Pro Plan",
+    planId: workspace.plan?.code || "free",
+    planName: workspace.plan?.name || "Free Starter",
     role: membership.role,
   };
 

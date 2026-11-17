@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiSession, requireWorkspaceMember } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 import { deleteMediaFile } from "@/lib/storage";
 
 export async function DELETE(
@@ -20,8 +21,35 @@ export async function DELETE(
   if (memberCheck.error) return memberCheck.error;
 
   try {
-    await deleteMediaFile(asset.storageKey);
+    // Prevent deleting media assets still attached to any post — never touch cloud storage if in use
+    const attachedPostCount = await prisma.postMedia.count({
+      where: { mediaAssetId: id },
+    });
+
+    if (attachedPostCount > 0) {
+      return NextResponse.json(
+        {
+          error: `This file is currently attached to ${attachedPostCount} post${attachedPostCount === 1 ? "" : "s"}. Remove it from those posts before deleting.`,
+          code: "MEDIA_IN_USE",
+          attachedPostCount,
+        },
+        { status: 409 }
+      );
+    }
+
+    // Delete the DB record FIRST so a DB constraint error never destroys the live cloud storage object
     await db.mediaAssets.delete(id);
+
+    // Clean up physical file in cloud storage after DB deletion succeeds
+    try {
+      await deleteMediaFile(asset.storageKey);
+    } catch (storageErr) {
+      console.error(
+        "[Media Delete] DB row deleted but cloud storage cleanup failed:",
+        asset.storageKey,
+        storageErr
+      );
+    }
 
     await db.activity.log({
       workspaceId: asset.workspaceId,
@@ -35,6 +63,9 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
     const error = err as Error;
-    return NextResponse.json({ error: error.message || "Failed to delete media asset" }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || "Failed to delete media asset" },
+      { status: 500 }
+    );
   }
 }

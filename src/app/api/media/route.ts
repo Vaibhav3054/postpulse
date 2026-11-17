@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiSession, requireWorkspaceMember } from "@/lib/authorization";
 import { db } from "@/lib/db";
+import { resolveWorkspacePlan, QuotaExceededError } from "@/lib/quota";
 import {
+  buildPublicUrlForStorageKey,
+  deleteMediaFile,
+  StorageConfigurationError,
+} from "@/lib/storage";
+import {
+  ALLOWED_MEDIA_MIME_TYPES,
+  getMaxSizeForMime,
   mediaCreateSchema,
   parseAndValidateStorageKey,
   parseJsonBody,
@@ -35,7 +43,6 @@ export async function POST(req: NextRequest) {
     workspaceId,
     fileName,
     storageKey,
-    publicUrl,
     mediaType,
     mimeType,
     fileSizeBytes,
@@ -55,15 +62,58 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const normalizedMime = (mimeType || "image/jpeg").split(";")[0].trim().toLowerCase();
+  if (!ALLOWED_MEDIA_MIME_TYPES.has(normalizedMime)) {
+    return NextResponse.json(
+      { error: `Unsupported file type: ${normalizedMime}.` },
+      { status: 400 }
+    );
+  }
+
+  const bytes = fileSizeBytes ?? 0;
+  const maxBytes = getMaxSizeForMime(normalizedMime);
+  if (bytes > maxBytes) {
+    return NextResponse.json(
+      { error: `File exceeds maximum allowed size (${Math.round(maxBytes / (1024 * 1024))} MB).` },
+      { status: 413 }
+    );
+  }
+
+  let canonicalPublicUrl: string;
   try {
+    canonicalPublicUrl = buildPublicUrlForStorageKey(storageKey);
+  } catch (err: unknown) {
+    if (err instanceof StorageConfigurationError) {
+      return NextResponse.json(
+        { error: err.message, code: "STORAGE_NOT_CONFIGURED" },
+        { status: 503 }
+      );
+    }
+    const error = err as Error;
+    return NextResponse.json({ error: error.message || "Invalid storage configuration" }, { status: 400 });
+  }
+
+  try {
+    // Re-verify storage quota prior to persisting DB row
+    const ws = await db.workspaces.findById(workspaceId);
+    const plan = resolveWorkspacePlan(ws?.plan);
+    const existingMedia = await db.mediaAssets.listForWorkspace(workspaceId);
+    const totalStorageBytes = existingMedia.reduce((acc, m) => acc + (m.fileSizeBytes || 0), 0);
+    const maxStorageBytes = plan.maxStorageMb * 1024 * 1024;
+
+    if (totalStorageBytes + bytes > maxStorageBytes) {
+      const currentMb = Number((totalStorageBytes / (1024 * 1024)).toFixed(1));
+      throw new QuotaExceededError("storage_mb", plan.maxStorageMb, currentMb, plan.code);
+    }
+
     const asset = await db.mediaAssets.create({
       workspaceId,
       fileName,
       storageKey,
-      publicUrl,
-      mediaType: mediaType || (mimeType?.startsWith("video/") ? "VIDEO" : "IMAGE"),
-      mimeType: mimeType || "image/jpeg",
-      fileSizeBytes: fileSizeBytes || 0,
+      publicUrl: canonicalPublicUrl,
+      mediaType: mediaType || (normalizedMime.startsWith("video/") ? "VIDEO" : "IMAGE"),
+      mimeType: normalizedMime,
+      fileSizeBytes: bytes,
       width,
       height,
       durationSeconds,
@@ -76,12 +126,37 @@ export async function POST(req: NextRequest) {
       action: "MEDIA_UPLOADED",
       entityType: "MEDIA_ASSET",
       entityId: asset.id,
-      metadata: { fileName: asset.fileName, mediaType: asset.mediaType },
+      metadata: { fileName: asset.fileName, mediaType: asset.mediaType, fileSizeBytes: bytes },
     });
 
     return NextResponse.json({ asset }, { status: 201 });
   } catch (err: unknown) {
+    // Orphan prevention: if DB creation failed for a newly uploaded storageKey (not already persisted),
+    // clean up the uploaded object in storage so failed DB writes don't leak orphaned files.
+    const existingRow = await db.mediaAssets.findByStorageKey(storageKey).catch(() => null);
+    if (!existingRow) {
+      await deleteMediaFile(storageKey).catch((cleanupErr) => {
+        console.error("[Media Cleanup] Failed to remove orphaned object:", storageKey, cleanupErr);
+      });
+    }
+
+    if (err instanceof QuotaExceededError) {
+      return NextResponse.json(
+        {
+          error: err.message,
+          code: "QUOTA_EXCEEDED",
+          resource: err.resource,
+          limit: err.limit,
+          current: err.current,
+        },
+        { status: 403 }
+      );
+    }
+
     const error = err as Error;
-    return NextResponse.json({ error: error.message || "Failed to save media asset" }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || "Failed to save media asset" },
+      { status: 500 }
+    );
   }
 }

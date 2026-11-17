@@ -116,6 +116,17 @@ export function ContentComposer({
     if (!files || files.length === 0) return;
 
     const file = files[0];
+    const mimeType = file.type || "image/jpeg";
+    const isVideo = mimeType.startsWith("video/");
+    const maxBytes = isVideo ? 100 * 1024 * 1024 : 15 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      setQuotaError(
+        `File exceeds maximum allowed size (${isVideo ? "100 MB for videos" : "15 MB for images"}).`
+      );
+      e.target.value = "";
+      return;
+    }
+
     setIsUploading(true);
     setQuotaError(null);
 
@@ -127,28 +138,32 @@ export function ContentComposer({
         body: JSON.stringify({
           workspaceId,
           fileName: file.name,
-          mimeType: file.type || "image/jpeg",
+          mimeType,
           fileSizeBytes: file.size,
         }),
       });
 
-      const urlData = await urlRes.json();
+      const urlData = await urlRes.json().catch(() => ({}));
       if (!urlRes.ok) {
         throw new Error(urlData.error || "Failed to initiate upload");
       }
 
-      // Step 2: Upload bytes
-      if (urlData.isDirectUpload) {
-        await fetch(urlData.uploadUrl, {
-          method: "PUT",
-          headers: { "Content-Type": file.type },
-          body: file,
-        });
-      } else {
-        await fetch(urlData.uploadUrl, {
-          method: "PUT",
-          body: await file.arrayBuffer(),
-        });
+      // Step 2: Upload bytes and verify response
+      const uploadRes = urlData.isDirectUpload
+        ? await fetch(urlData.uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": mimeType },
+            body: file,
+          })
+        : await fetch(urlData.uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": mimeType },
+            body: await file.arrayBuffer(),
+          });
+
+      if (!uploadRes.ok) {
+        const uploadErr = await uploadRes.json().catch(() => ({}));
+        throw new Error(uploadErr.error || `File upload failed (HTTP ${uploadRes.status})`);
       }
 
       // Step 3: Register media asset in database
@@ -160,20 +175,22 @@ export function ContentComposer({
           fileName: file.name,
           storageKey: urlData.storageKey,
           publicUrl: urlData.publicUrl,
-          mimeType: file.type,
+          mimeType,
           fileSizeBytes: file.size,
         }),
       });
-      const saveData = await saveRes.json();
-      if (saveRes.ok && saveData.asset) {
-        setSelectedMediaIds((prev) => [...prev, saveData.asset.id]);
-        mediaLibrary.unshift(saveData.asset);
+      const saveData = await saveRes.json().catch(() => ({}));
+      if (!saveRes.ok || !saveData.asset) {
+        throw new Error(saveData.error || "Failed to register media asset");
       }
+      setSelectedMediaIds((prev) => [...prev, saveData.asset.id]);
+      mediaLibrary.unshift(saveData.asset);
     } catch (err: unknown) {
       const error = err as Error;
-      setQuotaError(error.message);
+      setQuotaError(error.message || "Upload failed");
     } finally {
       setIsUploading(false);
+      e.target.value = "";
     }
   };
 
