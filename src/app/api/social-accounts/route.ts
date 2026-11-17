@@ -42,11 +42,22 @@ export async function POST(req: NextRequest) {
   const memberCheck = await requireWorkspaceMember(workspaceId, auth.user.id, ["OWNER", "ADMIN"]);
   if (memberCheck.error) return memberCheck.error;
 
+  if (process.env.MOCK_SOCIAL_PROVIDERS === "false") {
+    return NextResponse.json(
+      {
+        error:
+          "Live OAuth is enabled. Connect accounts via /api/social-accounts/oauth/start instead of direct mock creation.",
+        code: "LIVE_OAUTH_REQUIRED",
+      },
+      { status: 400 }
+    );
+  }
+
   try {
     const provider = getSocialProvider(platform as SocialPlatformType);
     const connectResult = await provider.handleCallback(
       mockCode || `mock_code_${Date.now()}`,
-      `${process.env.APP_URL || "http://localhost:3000"}/api/social-accounts/oauth/callback`
+      `${process.env.APP_URL || "http://localhost:3000"}/api/auth/callback/${platform.toLowerCase()}`
     );
 
     const newAccount = await db.socialAccounts.create({
@@ -62,7 +73,12 @@ export async function POST(req: NextRequest) {
         : undefined,
       tokenExpiresAt: connectResult.tokenExpiresAt,
       scopes: connectResult.scopes,
-      metadata: connectResult.account.metadata || {},
+      metadata: {
+        ...(connectResult.account.metadata || {}),
+        isMock: true,
+        connectionMode: "mock_sandbox",
+        needsReauth: false,
+      },
       isActive: true,
     });
 

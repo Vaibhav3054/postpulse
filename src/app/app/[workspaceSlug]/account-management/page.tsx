@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { Header } from "@/components/layout/Header";
 import { AccountManagementView } from "@/components/account-management/AccountManagementView";
 import { GoogleBusinessManagementService } from "@/lib/account-management/google-business.service";
+import { getAllProviderStatuses } from "@/lib/social-providers/oauth-service";
 
 export default async function AccountManagementPage({
   params,
@@ -90,6 +91,7 @@ export default async function AccountManagementPage({
         workspaceName={workspace.name}
         gbpLocation={gbpLocation}
         logs={formattedLogs}
+        providerStatuses={getAllProviderStatuses()}
       />
     </>
   );

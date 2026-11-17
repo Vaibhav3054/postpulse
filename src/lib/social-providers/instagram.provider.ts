@@ -107,10 +107,36 @@ export class InstagramProvider implements SocialProvider {
   }
 
   async refreshToken(refreshToken: string): Promise<{ accessToken: string; expiresAt?: Date }> {
-    // Meta uses token exchange refresh endpoint
+    const appId = process.env.META_APP_ID;
+    const appSecret = process.env.META_APP_SECRET;
+    if (
+      process.env.MOCK_SOCIAL_PROVIDERS === "true" ||
+      refreshToken.startsWith("mock_") ||
+      refreshToken.startsWith("ig_live_token_") ||
+      !appId ||
+      !appSecret
+    ) {
+      return {
+        accessToken: refreshToken,
+        expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+      };
+    }
+
+    const res = await fetch(
+      `https://graph.facebook.com/v20.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${encodeURIComponent(
+        appId
+      )}&client_secret=${encodeURIComponent(appSecret)}&fb_exchange_token=${encodeURIComponent(
+        refreshToken
+      )}`
+    );
+    const data = await res.json();
+    if (!res.ok || !data.access_token) {
+      throw new Error(data.error?.message || "Failed to refresh Meta Instagram access token");
+    }
+
     return {
-      accessToken: refreshToken,
-      expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+      accessToken: data.access_token,
+      expiresAt: new Date(Date.now() + (data.expires_in || 5184000) * 1000),
     };
   }
 

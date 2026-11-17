@@ -11,12 +11,14 @@ import {
   Plus,
   RefreshCw,
   ExternalLink,
+  FlaskConical,
 } from "lucide-react";
 import { GoogleBusinessManager } from "./GoogleBusinessManager";
 import { FacebookPageManager } from "./FacebookPageManager";
 import { InstagramProfileView } from "./InstagramProfileView";
 import { LinkedInOrganizationView } from "./LinkedInOrganizationView";
 import { SocialPlatformType } from "@/lib/social-providers/types";
+import type { ProviderIntegrationStatus } from "@/lib/social-providers/oauth-service";
 
 interface SocialAccountItem {
   id: string;
@@ -44,6 +46,7 @@ interface AccountManagementViewProps {
   workspaceName: string;
   gbpLocation: any | null;
   logs: ActivityLogItem[];
+  providerStatuses?: Record<SocialPlatformType, ProviderIntegrationStatus>;
 }
 
 export function AccountManagementView({
@@ -53,8 +56,10 @@ export function AccountManagementView({
   workspaceName,
   gbpLocation,
   logs,
+  providerStatuses,
 }: AccountManagementViewProps) {
   const [selectedPlatform, setSelectedPlatform] = useState<SocialPlatformType>("GOOGLE_BUSINESS");
+  const isSelectedLive = providerStatuses?.[selectedPlatform]?.mode === "live";
 
   const gbpAccount = accounts.find((a) => a.platform === "GOOGLE_BUSINESS");
   const fbAccount = accounts.find((a) => a.platform === "FACEBOOK");
@@ -114,10 +119,17 @@ export function AccountManagementView({
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold self-start sm:self-auto shrink-0 shadow-sm">
-          <ShieldCheck className="w-4 h-4" />
-          <span>Official OAuth Vault Active</span>
-        </div>
+        {isSelectedLive ? (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold self-start sm:self-auto shrink-0 shadow-sm">
+            <ShieldCheck className="w-4 h-4" />
+            <span>Live Official OAuth Active</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-semibold self-start sm:self-auto shrink-0 shadow-sm">
+            <FlaskConical className="w-4 h-4" />
+            <span>Sandbox Mode (Mock Sync)</span>
+          </div>
+        )}
       </div>
 
       {/* Primary Platform Selector Cards */}

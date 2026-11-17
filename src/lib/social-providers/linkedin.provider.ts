@@ -11,7 +11,15 @@ export class LinkedInProvider implements SocialProvider {
       return `/api/social-accounts/oauth/mock-callback?platform=LINKEDIN&state=${encodeURIComponent(state)}`;
     }
 
-    const scopes = ["openid", "profile", "email", "w_member_social"].join(" ");
+    const scopes = [
+      "openid",
+      "profile",
+      "email",
+      "w_member_social",
+      ...(process.env.LINKEDIN_ENABLE_ORG_SCOPES === "true"
+        ? ["r_organization_social", "w_organization_social", "rw_organization_admin"]
+        : []),
+    ].join(" ");
 
     return `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(
       redirectUri
@@ -98,9 +106,39 @@ export class LinkedInProvider implements SocialProvider {
   }
 
   async refreshToken(refreshToken: string): Promise<{ accessToken: string; expiresAt?: Date }> {
+    const clientId = process.env.LINKEDIN_CLIENT_ID;
+    const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+    if (
+      process.env.MOCK_SOCIAL_PROVIDERS === "true" ||
+      refreshToken.startsWith("mock_") ||
+      refreshToken.startsWith("li_token_") ||
+      !clientId ||
+      !clientSecret
+    ) {
+      return {
+        accessToken: refreshToken,
+        expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+      };
+    }
+
+    const res = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: clientId,
+        client_secret: clientSecret,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.access_token) {
+      throw new Error(data.error_description || "Failed to refresh LinkedIn OAuth token");
+    }
+
     return {
-      accessToken: refreshToken,
-      expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+      accessToken: data.access_token,
+      expiresAt: new Date(Date.now() + (data.expires_in || 5184000) * 1000),
     };
   }
 

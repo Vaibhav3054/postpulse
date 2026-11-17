@@ -352,3 +352,18 @@ model Notification {
   @@index([userId, isRead])
 }
 
+model OAuthState {
+  id          String         @id @default(uuid())
+  stateToken  String         @unique
+  workspaceId String
+  userId      String
+  platform    SocialPlatform
+  redirectUri String
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime       @default(now())
+
+  @@index([expiresAt])
+  @@index([workspaceId])
+}
+
