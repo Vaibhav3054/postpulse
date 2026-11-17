@@ -116,6 +116,7 @@ model User {
   subscriptions       Subscription[]
   paymentTransactions PaymentTransaction[]
   sentInvitations     WorkspaceInvitation[] @relation("SentWorkspaceInvitations")
+  passwordResetTokens PasswordResetToken[]
   createdAt           DateTime              @default(now())
   updatedAt       DateTime          @updatedAt
 }
@@ -533,6 +534,21 @@ model WorkspaceInvitation {
 
   @@index([workspaceId, status])
   @@index([email, status])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id          String    @id @default(uuid())
+  userId      String
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  requestedIp String?
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
   @@index([expiresAt])
 }
 

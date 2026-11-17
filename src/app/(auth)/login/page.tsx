@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, Lock, Mail, Eye, EyeOff, ShieldCheck } from "lucide-react";
@@ -12,6 +12,14 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resetNotice, setResetNotice] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("reset") === "1") {
+      setResetNotice(true);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +77,13 @@ export default function LoginPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
         <div className="bg-zinc-900/90 backdrop-blur-xl py-8 px-6 sm:px-10 border border-zinc-800 rounded-2xl shadow-2xl space-y-6">
+          {resetNotice && (
+            <div className="p-3 text-xs bg-emerald-950/60 border border-emerald-800/80 text-emerald-300 rounded-xl flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+              <span>Your password has been updated. Sign in with your new password.</span>
+            </div>
+          )}
+
           {error && (
             <div className="p-3 text-xs bg-rose-950/60 border border-rose-800/80 text-rose-300 rounded-xl flex items-center gap-2 animate-fade-in">
               <span className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0" />
@@ -100,6 +115,12 @@ export default function LoginPage() {
                 <label className="block text-xs font-semibold text-zinc-300">
                   Password
                 </label>
+                <Link
+                  href="/forgot-password"
+                  className="text-[11px] font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+                >
+                  Forgot password?
+                </Link>
               </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />

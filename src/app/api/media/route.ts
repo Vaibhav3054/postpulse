@@ -21,6 +21,9 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const workspaceId = searchParams.get("workspaceId");
+  const rawLimit = searchParams.get("limit");
+  const cursor = searchParams.get("cursor") || undefined;
+
   if (!workspaceId) {
     return NextResponse.json({ error: "workspaceId is required." }, { status: 400 });
   }
@@ -28,8 +31,18 @@ export async function GET(req: NextRequest) {
   const memberCheck = await requireWorkspaceMember(workspaceId, auth.user.id);
   if (memberCheck.error) return memberCheck.error;
 
-  const media = await db.mediaAssets.listForWorkspace(workspaceId);
-  return NextResponse.json({ media });
+  const parsedLimit = rawLimit ? Number.parseInt(rawLimit, 10) : 50;
+  const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 100) : 50;
+
+  const result = await db.mediaAssets.listPaginatedForWorkspace(workspaceId, {
+    limit,
+    cursor,
+  });
+
+  return NextResponse.json({
+    media: result.items,
+    pagination: result.pagination,
+  });
 }
 
 export async function POST(req: NextRequest) {

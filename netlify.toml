@@ -4,5 +4,9 @@
 
 [build.environment]
   NODE_VERSION = "20"
-  SECRETS_SCAN_ENABLED = "false"
+  # Secrets scanning remains ENABLED for production security.
+  # Only explicitly public configuration keys and example/docs files are omitted.
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_RAZORPAY_KEY_ID,APP_URL,STORAGE_BUCKET,EMAIL_FROM,MOCK_SOCIAL_PROVIDERS,LINKEDIN_ENABLE_ORG_SCOPES"
+  SECRETS_SCAN_OMIT_PATHS = ".env.example,docs/**"
+
 

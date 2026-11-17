@@ -288,13 +288,46 @@ export const db = {
     async listForWorkspace(workspaceId: string) {
       const assets = await prisma.mediaAsset.findMany({
         where: { workspaceId },
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       });
 
       return assets.map((a) => ({
         ...a,
         fileSizeBytes: Number(a.fileSizeBytes),
       }));
+    },
+
+    async listPaginatedForWorkspace(
+      workspaceId: string,
+      options?: { limit?: number; cursor?: string }
+    ) {
+      const take = Math.min(Math.max(options?.limit ?? 50, 1), 100);
+      const [rows, totalCount] = await Promise.all([
+        prisma.mediaAsset.findMany({
+          where: { workspaceId },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: take + 1,
+          ...(options?.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
+        }),
+        prisma.mediaAsset.count({ where: { workspaceId } }),
+      ]);
+
+      const hasMore = rows.length > take;
+      const pageRows = hasMore ? rows.slice(0, take) : rows;
+      const nextCursor = hasMore && pageRows.length > 0 ? pageRows[pageRows.length - 1].id : null;
+
+      return {
+        items: pageRows.map((a) => ({
+          ...a,
+          fileSizeBytes: Number(a.fileSizeBytes),
+        })),
+        pagination: {
+          limit: take,
+          nextCursor,
+          hasMore,
+          totalCount,
+        },
+      };
     },
 
     async findById(id: string) {
@@ -380,7 +413,7 @@ export const db = {
             },
           },
         },
-        orderBy: [{ scheduledAt: "desc" }, { createdAt: "desc" }],
+        orderBy: [{ scheduledAt: "desc" }, { createdAt: "desc" }, { id: "desc" }],
       });
 
       return posts.map((p) => ({
@@ -426,6 +459,101 @@ export const db = {
           updatedAt: t.updatedAt,
         })),
       }));
+    },
+
+    async listPaginatedForWorkspace(
+      workspaceId: string,
+      options?: { status?: string; platform?: string; limit?: number; cursor?: string }
+    ) {
+      const where: any = { workspaceId };
+
+      if (options?.status && options.status !== "ALL") {
+        where.status = options.status as PostStatus;
+      }
+
+      if (options?.platform && options.platform !== "ALL") {
+        where.platformTargets = {
+          some: {
+            platform: options.platform as SocialPlatform,
+          },
+        };
+      }
+
+      const take = Math.min(Math.max(options?.limit ?? 50, 1), 100);
+      const [rows, totalCount] = await Promise.all([
+        prisma.post.findMany({
+          where,
+          include: {
+            media: {
+              include: { mediaAsset: true },
+              orderBy: { displayOrder: "asc" },
+            },
+            platformTargets: {
+              include: { socialAccount: true },
+            },
+          },
+          orderBy: [{ scheduledAt: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+          take: take + 1,
+          ...(options?.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
+        }),
+        prisma.post.count({ where }),
+      ]);
+
+      const hasMore = rows.length > take;
+      const pageRows = hasMore ? rows.slice(0, take) : rows;
+      const nextCursor = hasMore && pageRows.length > 0 ? pageRows[pageRows.length - 1].id : null;
+
+      return {
+        items: pageRows.map((p) => ({
+          id: p.id,
+          workspaceId: p.workspaceId,
+          createdByUserId: p.createdByUserId || "",
+          status: p.status,
+          commonCaption: p.commonCaption || "",
+          scheduledAt: p.scheduledAt || undefined,
+          timezone: p.timezone,
+          publishedAt: p.publishedAt || undefined,
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt,
+          media: p.media.map((m) => ({
+            id: m.mediaAsset.id,
+            fileName: m.mediaAsset.fileName,
+            publicUrl: m.mediaAsset.publicUrl,
+            mediaType: m.mediaAsset.mediaType,
+            fileSizeBytes: Number(m.mediaAsset.fileSizeBytes),
+          })),
+          platformTargets: p.platformTargets.map((t) => ({
+            id: t.id,
+            postId: t.postId,
+            socialAccountId: t.socialAccountId,
+            platform: t.platform,
+            customCaption: t.customCaption || undefined,
+            platformPayload: (t.platformPayload as Record<string, unknown>) || {},
+            status: t.status,
+            externalPostId: t.externalPostId || undefined,
+            externalPostUrl: t.externalPostUrl || undefined,
+            errorMessage: t.errorMessage || undefined,
+            errorDetails: (t.errorDetails as Record<string, unknown>) || undefined,
+            publishedAt: t.publishedAt || undefined,
+            idempotencyKey: t.idempotencyKey,
+            impressions: t.impressions ?? 0,
+            likes: t.likes ?? 0,
+            comments: t.comments ?? 0,
+            shares: t.shares ?? 0,
+            reach: t.reach ?? 0,
+            clicks: t.clicks ?? 0,
+            metricsUpdatedAt: t.metricsUpdatedAt || undefined,
+            createdAt: t.createdAt,
+            updatedAt: t.updatedAt,
+          })),
+        })),
+        pagination: {
+          limit: take,
+          nextCursor,
+          hasMore,
+          totalCount,
+        },
+      };
     },
 
     async findById(id: string) {

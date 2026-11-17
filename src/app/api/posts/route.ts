@@ -19,6 +19,8 @@ export async function GET(req: NextRequest) {
   const workspaceId = searchParams.get("workspaceId");
   const status = searchParams.get("status") || "ALL";
   const platform = searchParams.get("platform") || "ALL";
+  const rawLimit = searchParams.get("limit");
+  const cursor = searchParams.get("cursor") || undefined;
 
   if (!workspaceId) {
     return NextResponse.json({ error: "workspaceId is required." }, { status: 400 });
@@ -27,8 +29,20 @@ export async function GET(req: NextRequest) {
   const memberCheck = await requireWorkspaceMember(workspaceId, auth.user.id);
   if (memberCheck.error) return memberCheck.error;
 
-  const posts = await db.posts.listForWorkspace(workspaceId, { status, platform });
-  return NextResponse.json({ posts });
+  const parsedLimit = rawLimit ? Number.parseInt(rawLimit, 10) : 50;
+  const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 100) : 50;
+
+  const result = await db.posts.listPaginatedForWorkspace(workspaceId, {
+    status,
+    platform,
+    limit,
+    cursor,
+  });
+
+  return NextResponse.json({
+    posts: result.items,
+    pagination: result.pagination,
+  });
 }
 
 export async function POST(req: NextRequest) {
