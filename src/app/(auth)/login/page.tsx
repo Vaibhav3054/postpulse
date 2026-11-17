@@ -30,7 +30,14 @@ export default function LoginPage() {
         throw new Error(data.error || "Invalid email or password.");
       }
 
-      router.push("/app");
+      const params = new URLSearchParams(window.location.search);
+      const nextPath = params.get("next");
+      const safeNext =
+        nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
+          ? nextPath
+          : "/app";
+
+      router.push(safeNext);
       router.refresh();
     } catch (err: unknown) {
       const e = err as Error;

@@ -48,8 +48,17 @@ export default function SignupPage() {
         throw new Error(data.error || "Signup failed");
       }
 
-      // Smoothly navigate to their new workspace dashboard
-      if (data.workspaceSlug) {
+      const params = new URLSearchParams(window.location.search);
+      const nextPath = params.get("next");
+      const safeNext =
+        nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
+          ? nextPath
+          : null;
+
+      // Smoothly navigate to invited URL or new workspace dashboard
+      if (safeNext) {
+        router.push(safeNext);
+      } else if (data.workspaceSlug) {
         router.push(`/app/${data.workspaceSlug}/dashboard`);
       } else {
         router.push("/app");

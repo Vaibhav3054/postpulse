@@ -90,6 +90,14 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  REVOKED
+  EXPIRED
+}
+
 model User {
   id              String            @id @default(uuid())
   email           String            @unique
@@ -107,7 +115,8 @@ model User {
   notifications       Notification[]
   subscriptions       Subscription[]
   paymentTransactions PaymentTransaction[]
-  createdAt           DateTime             @default(now())
+  sentInvitations     WorkspaceInvitation[] @relation("SentWorkspaceInvitations")
+  createdAt           DateTime              @default(now())
   updatedAt       DateTime          @updatedAt
 }
 
@@ -148,7 +157,8 @@ model Workspace {
   posts          Post[]
   activityLogs   ActivityLog[]
   notifications  Notification[]
-  createdAt      DateTime          @default(now())
+  invitations    WorkspaceInvitation[]
+  createdAt      DateTime              @default(now())
   updatedAt      DateTime          @updatedAt
 
   @@index([slug])
@@ -501,5 +511,28 @@ model PlatformSetting {
   description     String?
   updatedByUserId String?
   updatedAt       DateTime @updatedAt
+}
+
+model WorkspaceInvitation {
+  id              String           @id @default(uuid())
+  workspaceId     String
+  email           String
+  role            WorkspaceRole    @default(MEMBER)
+  tokenHash       String           @unique
+  status          InvitationStatus @default(PENDING)
+  invitedByUserId String
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  rejectedAt      DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  workspace       Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedByUser   User             @relation("SentWorkspaceInvitations", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, status])
+  @@index([email, status])
+  @@index([expiresAt])
 }
 
