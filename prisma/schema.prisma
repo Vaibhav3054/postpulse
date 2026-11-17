@@ -474,3 +474,32 @@ model WebhookEvent {
   @@index([provider, eventType])
 }
 
+model AdminAuditLog {
+  id            String   @id @default(uuid())
+  adminUserId   String
+  adminEmail    String
+  targetUserId  String?
+  targetEmail   String?
+  action        String
+  entityType    String
+  entityId      String?
+  previousValue Json?
+  newValue      Json?
+  reason        String?  @db.Text
+  ipAddress     String?
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([adminUserId, createdAt])
+  @@index([targetUserId, createdAt])
+  @@index([action])
+}
+
+model PlatformSetting {
+  key             String   @id
+  value           Json
+  description     String?
+  updatedByUserId String?
+  updatedAt       DateTime @updatedAt
+}
+
