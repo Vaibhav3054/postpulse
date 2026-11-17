@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const result = await dispatchDueScheduledPosts();
-    return NextResponse.json({ success: true, processedCount: result.processedCount });
+    return NextResponse.json({ success: true, ...result });
   } catch (err: unknown) {
     const error = err as Error;
     return NextResponse.json({ error: error.message || "Dispatch failed" }, { status: 500 });
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const result = await dispatchDueScheduledPosts();
-    return NextResponse.json({ success: true, processedCount: result.processedCount });
+    return NextResponse.json({ success: true, ...result });
   } catch (err: unknown) {
     const error = err as Error;
     return NextResponse.json({ error: error.message || "Dispatch failed" }, { status: 500 });

@@ -38,11 +38,13 @@ interface AppShellProps {
 interface MobileNavContextType {
   openMobileSidebar: () => void;
   closeMobileSidebar: () => void;
+  workspaceId: string;
 }
 
 const MobileNavContext = createContext<MobileNavContextType>({
   openMobileSidebar: () => {},
   closeMobileSidebar: () => {},
+  workspaceId: "",
 });
 
 export const useMobileNav = () => useContext(MobileNavContext);
@@ -88,6 +90,7 @@ export function AppShell({
       value={{
         openMobileSidebar: () => setIsMobileSidebarOpen(true),
         closeMobileSidebar: () => setIsMobileSidebarOpen(false),
+        workspaceId: currentWorkspace.id,
       }}
     >
       <div className="flex h-screen w-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950">

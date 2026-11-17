@@ -517,15 +517,22 @@ export const db = {
         }
       }
 
+      // Never mark a post or target PUBLISHED before the social provider confirms publication.
+      // "Publish Now" starts as PUBLISHING with PENDING targets and transitions only after executePublishJob succeeds.
+      const initialPostStatus: PostStatus =
+        data.status === "PUBLISHED"
+          ? PostStatus.PUBLISHING
+          : (data.status as PostStatus);
+
       const post = await prisma.post.create({
         data: {
           workspaceId: data.workspaceId,
           createdByUserId: data.createdByUserId,
-          status: data.status as PostStatus,
+          status: initialPostStatus,
           commonCaption: data.commonCaption,
           scheduledAt: data.scheduledAt,
           timezone: data.timezone || "UTC",
-          publishedAt: data.status === "PUBLISHED" ? new Date() : undefined,
+          publishedAt: undefined,
           media: {
             create: (data.mediaAssetIds || []).map((assetId, idx) => ({
               mediaAssetId: assetId,
@@ -538,14 +545,11 @@ export const db = {
               platform: t.platform,
               customCaption: t.customCaption,
               platformPayload: (t.platformPayload || {}) as any,
-              status:
-                data.status === "PUBLISHED"
-                  ? TargetPublishStatus.PUBLISHED
-                  : TargetPublishStatus.PENDING,
-              publishedAt: data.status === "PUBLISHED" ? new Date() : undefined,
+              status: TargetPublishStatus.PENDING,
+              publishedAt: undefined,
               idempotencyKey: `target_${Date.now()}_${t.socialAccountId}_${Math.random()
                 .toString(36)
-                .substring(2, 6)}`,
+                .substring(2, 8)}`,
             })),
           },
         },

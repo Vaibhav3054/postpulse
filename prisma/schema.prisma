@@ -53,6 +53,14 @@ enum TargetPublishStatus {
   FAILED
 }
 
+enum NotificationType {
+  PUBLISH_FAILED
+  TOKEN_EXPIRED
+  ACCOUNT_DISCONNECTED
+  PUBLISH_SUCCESS
+  SYSTEM
+}
+
 model User {
   id              String            @id @default(uuid())
   email           String            @unique
@@ -67,6 +75,7 @@ model User {
   ownedWorkspaces Workspace[]       @relation("WorkspaceOwner")
   createdPosts    Post[]
   activityLogs    ActivityLog[]
+  notifications   Notification[]
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 }
@@ -100,6 +109,7 @@ model Workspace {
   mediaAssets    MediaAsset[]
   posts          Post[]
   activityLogs   ActivityLog[]
+  notifications  Notification[]
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
@@ -207,6 +217,12 @@ model PostPlatformTarget {
   errorDetails    Json?
   publishedAt     DateTime?
   idempotencyKey  String               @unique
+  retryCount      Int                  @default(0)
+  maxRetries      Int                  @default(3)
+  nextRetryAt     DateTime?
+  lockedAt        DateTime?
+  lockOwner       String?
+  isMockPublish   Boolean              @default(false)
 
   // Performance & Insights Metrics
   impressions     Int                  @default(0)
@@ -225,6 +241,8 @@ model PostPlatformTarget {
 
   @@index([postId])
   @@index([socialAccountId])
+  @@index([status, nextRetryAt])
+  @@index([lockedAt])
 }
 
 model PublishAttempt {
@@ -312,5 +330,25 @@ model RateLimitBucket {
   updatedAt DateTime @updatedAt
 
   @@index([resetAt])
+}
+
+model Notification {
+  id          String           @id @default(uuid())
+  workspaceId String
+  userId      String?
+  type        NotificationType
+  title       String
+  message     String           @db.Text
+  entityType  String?
+  entityId    String?
+  metadata    Json             @default("{}")
+  isRead      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, isRead, createdAt])
+  @@index([userId, isRead])
 }
 
