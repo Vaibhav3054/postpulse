@@ -417,12 +417,12 @@ export function WorkspaceSettingsView({
 
         {/* Gateway Status Notice */}
         {!gatewayStatus.isConfigured && (
-          <div className="p-3.5 rounded-xl border border-amber-200 dark:border-amber-800/70 bg-amber-50/70 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 text-xs flex items-start gap-2.5">
-            <CreditCard className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
+          <div className="p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-900/70 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-900 dark:text-indigo-200 text-xs flex items-start gap-2.5">
+            <CreditCard className="w-4 h-4 shrink-0 mt-0.5 text-indigo-500" />
             <div>
-              <p className="font-semibold">Razorpay Payment Gateway Awaiting API Keys</p>
+              <p className="font-semibold">Early Access Beta — Online Billing Opening Soon</p>
               <p className="text-[11px] opacity-90 mt-0.5">
-                Checkout & webhook signature verification are fully implemented. Paid plan upgrades require valid Razorpay credentials (`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, and Razorpay Plan IDs) — direct unverified free upgrades are disabled for security.
+                You can use PostPulse on the Free plan right now. Need Pro or Agency limits during early access? Reach out to our support team and we can activate complimentary access on your account.
               </p>
             </div>
           </div>
@@ -477,10 +477,15 @@ export function WorkspaceSettingsView({
 
                 <button
                   type="button"
-                  disabled={isCurrent || checkingOutPlan === plan.code || plan.code === "free"}
+                  disabled={
+                    isCurrent ||
+                    checkingOutPlan === plan.code ||
+                    plan.code === "free" ||
+                    !gatewayStatus.isConfigured
+                  }
                   onClick={() => handleStartCheckout(plan.code)}
                   className={`w-full mt-5 py-2 text-xs font-semibold rounded-lg transition-colors ${
-                    isCurrent || plan.code === "free"
+                    isCurrent || plan.code === "free" || !gatewayStatus.isConfigured
                       ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-default"
                       : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
                   }`}
@@ -489,9 +494,11 @@ export function WorkspaceSettingsView({
                     ? "Current Plan"
                     : plan.code === "free"
                       ? "Free Default Tier"
-                      : checkingOutPlan === plan.code
-                        ? "Starting Razorpay..."
-                        : `Upgrade to ${plan.name}`}
+                      : !gatewayStatus.isConfigured
+                        ? "Billing Opening Soon"
+                        : checkingOutPlan === plan.code
+                          ? "Starting Checkout..."
+                          : `Upgrade to ${plan.name}`}
                 </button>
               </div>
             );

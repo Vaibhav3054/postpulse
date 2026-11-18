@@ -125,7 +125,12 @@ export function AccountManagementView({
           </p>
         </div>
 
-        {isSelectedLive ? (
+        {isSelectedComingSoon ? (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-semibold self-start sm:self-auto shrink-0 shadow-sm">
+            <Clock className="w-4 h-4" />
+            <span>Coming Soon</span>
+          </div>
+        ) : isSelectedLive ? (
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold self-start sm:self-auto shrink-0 shadow-sm">
             <ShieldCheck className="w-4 h-4" />
             <span>Live Official OAuth Active</span>

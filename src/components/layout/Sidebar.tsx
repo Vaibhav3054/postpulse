@@ -211,7 +211,7 @@ export function Sidebar({
                 >
                   <span className="truncate">{ws.name}</span>
                   <span className="text-[10px] text-zinc-400 uppercase font-mono">
-                    {ws.planName && !ws.planName.includes("-") ? ws.planName : "PRO"}
+                    {ws.planName && !/^[0-9a-f-]{32,}$/i.test(ws.planName) ? ws.planName : "FREE"}
                   </span>
                 </button>
               ))}
@@ -291,7 +291,7 @@ export function Sidebar({
           </a>
         </div>
         <p className="text-[11px] text-zinc-500 leading-tight">
-          Official APIs connected. Free-tier cloud storage active.
+          Official OAuth APIs &amp; cloud media storage active.
         </p>
       </div>
 
