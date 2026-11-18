@@ -2,16 +2,16 @@ import type { Metadata } from "next";
 import { LegalPageShell, SUPPORT_EMAIL } from "@/components/legal/LegalPageShell";
 
 export const metadata: Metadata = {
-  title: "Cancellation & Refund Policy — PostPulse by Let It Grow",
+  title: "Cancellation & Refund Policy — PostPulse",
   description:
-    "Subscription cancellation, billing cycle, and refund eligibility policy for PostPulse by Let It Grow.",
+    "Subscription cancellation, billing cycle, and refund eligibility policy for PostPulse.",
 };
 
 export default function RefundPolicyPage() {
   return (
     <LegalPageShell
       title="Cancellation & Refund Policy"
-      subtitle="Clear, transparent subscription cancellation and refund rules for PostPulse (operated by Let It Grow)."
+      subtitle="Clear, transparent subscription cancellation and refund rules for PostPulse."
       lastUpdated="November 2026"
       activePath="/refund-policy"
     >
@@ -101,7 +101,7 @@ export default function RefundPolicyPage() {
       <section className="space-y-2.5">
         <h2 className="text-base font-bold text-white">5. Support &amp; Grievance Contact</h2>
         <p>
-          <strong className="text-white">Let It Grow (PostPulse Billing Support)</strong>
+          <strong className="text-white">PostPulse Billing Support</strong>
           <br />
           Email:{" "}
           <a

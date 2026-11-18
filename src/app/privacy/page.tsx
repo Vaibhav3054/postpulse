@@ -2,26 +2,26 @@ import type { Metadata } from "next";
 import { LegalPageShell, SUPPORT_EMAIL } from "@/components/legal/LegalPageShell";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — PostPulse by Let It Grow",
+  title: "Privacy Policy — PostPulse",
   description:
-    "How PostPulse (a product of Let It Grow) collects, protects, encrypts, and uses your account and connected social media data.",
+    "How PostPulse collects, protects, encrypts, and uses your account and connected social media data.",
 };
 
 export default function PrivacyPolicyPage() {
   return (
     <LegalPageShell
       title="Privacy Policy"
-      subtitle="How PostPulse (operated by Let It Grow) collects, uses, encrypts, and protects your personal and connected social platform information."
+      subtitle="How PostPulse collects, uses, encrypts, and protects your personal and connected social platform information."
       lastUpdated="November 2026"
       activePath="/privacy"
     >
       <section className="space-y-2.5">
         <h2 className="text-base font-bold text-white">1. Who We Are</h2>
         <p>
-          PostPulse (<span className="text-zinc-200">https://postpulse-saas.netlify.app</span>) is a
-          multi-platform social media scheduling, publishing, and account management SaaS product
-          built and operated by <strong className="text-white">Let It Grow</strong>. For privacy
-          questions or data requests, contact us at{" "}
+          <strong className="text-white">PostPulse</strong> (
+          <span className="text-zinc-200">https://postpulse-saas.netlify.app</span>) is a
+          multi-platform social media scheduling, publishing, and account management SaaS platform.
+          For privacy questions or data requests, contact us at{" "}
           <a
             href={`mailto:${SUPPORT_EMAIL}`}
             className="text-indigo-400 hover:underline"
@@ -212,7 +212,7 @@ export default function PrivacyPolicyPage() {
       <section className="space-y-2.5">
         <h2 className="text-base font-bold text-white">8. Contact Us</h2>
         <p>
-          <strong className="text-white">Let It Grow (PostPulse)</strong>
+          <strong className="text-white">PostPulse Support</strong>
           <br />
           Email:{" "}
           <a

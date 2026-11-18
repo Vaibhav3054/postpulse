@@ -36,7 +36,6 @@ export function LegalPageShell({
             </div>
             <div className="leading-tight">
               <div className="font-bold text-base text-white tracking-tight">PostPulse</div>
-              <div className="text-[10px] text-zinc-500">by Let It Grow</div>
             </div>
           </Link>
 
@@ -74,7 +73,7 @@ export function LegalPageShell({
           </h1>
           <p className="text-sm text-zinc-400 max-w-2xl">{subtitle}</p>
           <p className="text-xs text-zinc-500">
-            Effective &amp; Last Updated: {lastUpdated} · Operated by <strong className="text-zinc-300">Let It Grow</strong>
+            Effective &amp; Last Updated: {lastUpdated}
           </p>
         </div>
 
@@ -86,7 +85,7 @@ export function LegalPageShell({
       {/* Footer */}
       <footer className="border-t border-zinc-800/80 py-6 px-4 sm:px-6 text-xs text-zinc-500">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <span>PostPulse by Let It Grow © 2026. All rights reserved.</span>
+          <span>PostPulse © 2026. All rights reserved.</span>
           <div className="flex flex-wrap items-center justify-center gap-5 text-zinc-400">
             <Link href="/privacy" className="hover:text-white transition-colors">
               Privacy Policy

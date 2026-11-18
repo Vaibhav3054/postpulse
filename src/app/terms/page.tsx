@@ -3,25 +3,24 @@ import Link from "next/link";
 import { LegalPageShell, SUPPORT_EMAIL } from "@/components/legal/LegalPageShell";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — PostPulse by Let It Grow",
+  title: "Terms of Service — PostPulse",
   description:
-    "Terms and conditions governing use of the PostPulse SaaS platform operated by Let It Grow.",
+    "Terms and conditions governing use of the PostPulse SaaS platform.",
 };
 
 export default function TermsOfServicePage() {
   return (
     <LegalPageShell
       title="Terms of Service"
-      subtitle="The terms governing your access to and use of PostPulse, operated by Let It Grow."
+      subtitle="The terms governing your access to and use of PostPulse."
       lastUpdated="November 2026"
       activePath="/terms"
     >
       <section className="space-y-2.5">
         <h2 className="text-base font-bold text-white">1. Acceptance of Terms</h2>
         <p>
-          By creating an account, accessing, or using <strong className="text-white">PostPulse</strong>{" "}
-          (operated by <strong className="text-white">Let It Grow</strong>), you agree to be bound
-          by these Terms of Service and our{" "}
+          By creating an account, accessing, or using <strong className="text-white">PostPulse</strong>,
+          you agree to be bound by these Terms of Service and our{" "}
           <Link href="/privacy" className="text-indigo-400 hover:underline">
             Privacy Policy
           </Link>
@@ -83,7 +82,7 @@ export default function TermsOfServicePage() {
           </li>
         </ul>
         <p>
-          Let It Grow reserves the right to suspend or terminate accounts that violate these terms
+          PostPulse reserves the right to suspend or terminate accounts that violate these terms
           or abuse platform APIs.
         </p>
       </section>
@@ -117,8 +116,8 @@ export default function TermsOfServicePage() {
         <h2 className="text-base font-bold text-white">6. Third-Party APIs &amp; Availability</h2>
         <p>
           PostPulse relies on official third-party social media APIs (LinkedIn, Google, Meta).
-          While we operate automated retry and token-refresh systems to maximize reliability, Let
-          It Grow is not responsible for publishing delays, API rate limits, outages, or account
+          While we operate automated retry and token-refresh systems to maximize reliability,
+          PostPulse is not responsible for publishing delays, API rate limits, outages, or account
           restrictions imposed directly by third-party social networks.
         </p>
       </section>
@@ -127,10 +126,10 @@ export default function TermsOfServicePage() {
         <h2 className="text-base font-bold text-white">7. Limitation of Liability</h2>
         <p>
           PostPulse is provided on an &ldquo;as is&rdquo; and &ldquo;as available&rdquo; basis. To
-          the maximum extent permitted by law, Let It Grow shall not be liable for any indirect,
+          the maximum extent permitted by law, PostPulse shall not be liable for any indirect,
           incidental, consequential, or punitive damages, or loss of profits or data. Our total
           aggregate liability for any claim relating to the service shall not exceed the total fees
-          paid by you to Let It Grow in the three (3) months preceding the claim.
+          paid by you to PostPulse in the three (3) months preceding the claim.
         </p>
       </section>
 
