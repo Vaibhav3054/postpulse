@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Share2,
@@ -54,6 +54,32 @@ export function SocialAccountsManager({
   const [verifyingAccountId, setVerifyingAccountId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    setAccounts(initialAccounts);
+  }, [initialAccounts]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthError = params.get("error");
+    const connected = params.get("connected");
+    const mode = params.get("mode");
+
+    if (oauthError) {
+      setError(oauthError);
+    } else if (connected) {
+      const label = connected.replace(/_/g, " ");
+      setNotice(
+        mode === "live"
+          ? `Successfully connected your live ${label} account via official OAuth 2.0.`
+          : `Connected ${label} account.`
+      );
+    }
+
+    if (oauthError || connected || mode) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
 
   const platformsConfig = [
     {

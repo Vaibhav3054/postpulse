@@ -160,17 +160,88 @@ export class LinkedInProvider implements SocialProvider {
     }
 
     try {
+      // Upload attached image(s) via LinkedIn's official Digital Media Register + PUT Upload API
+      const uploadedMedia: Array<{ status: "READY"; media: string }> = [];
+      const candidateUrls = (payload.mediaUrls || []).filter(Boolean).slice(0, 9);
+
+      for (const mediaUrl of candidateUrls) {
+        const assetRes = await fetch(mediaUrl);
+        if (!assetRes.ok) {
+          throw new Error(`Failed to download attached media for LinkedIn upload (HTTP ${assetRes.status})`);
+        }
+        const contentType = (assetRes.headers.get("content-type") || "image/jpeg").split(";")[0].trim().toLowerCase();
+        if (!contentType.startsWith("image/")) {
+          // Skip non-image assets for feedshare-image recipe
+          continue;
+        }
+        const imageBytes = await assetRes.arrayBuffer();
+
+        const registerRes = await fetch("https://api.linkedin.com/v2/assets?action=registerUpload", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+            "X-Restli-Protocol-Version": "2.0.0",
+          },
+          body: JSON.stringify({
+            registerUploadRequest: {
+              recipes: ["urn:li:digitalmediaRecipe:feedshare-image"],
+              owner: accountId,
+              serviceRelationships: [
+                {
+                  relationshipType: "OWNER",
+                  identifier: "urn:li:userGeneratedContent",
+                },
+              ],
+            },
+          }),
+        });
+
+        const registerData = await registerRes.json().catch(() => ({}));
+        const uploadUrl =
+          registerData?.value?.uploadMechanism?.[
+            "com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"
+          ]?.uploadUrl;
+        const assetUrn = registerData?.value?.asset;
+
+        if (!registerRes.ok || !uploadUrl || !assetUrn) {
+          throw new Error(
+            registerData?.message || "Failed to register image upload with LinkedIn API"
+          );
+        }
+
+        const putRes = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": contentType,
+          },
+          body: imageBytes,
+        });
+
+        if (!putRes.ok) {
+          throw new Error(`LinkedIn rejected image binary upload (HTTP ${putRes.status})`);
+        }
+
+        uploadedMedia.push({ status: "READY", media: assetUrn });
+      }
+
       // Official LinkedIn UGC Post API
+      const shareContent: Record<string, unknown> = {
+        shareCommentary: {
+          text: payload.caption,
+        },
+        shareMediaCategory: uploadedMedia.length > 0 ? "IMAGE" : "NONE",
+      };
+      if (uploadedMedia.length > 0) {
+        shareContent.media = uploadedMedia;
+      }
+
       const requestBody: Record<string, unknown> = {
         author: accountId,
         lifecycleState: "PUBLISHED",
         specificContent: {
-          "com.linkedin.ugc.ShareContent": {
-            shareCommentary: {
-              text: payload.caption,
-            },
-            shareMediaCategory: "NONE",
-          },
+          "com.linkedin.ugc.ShareContent": shareContent,
         },
         visibility: {
           "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
@@ -187,19 +258,20 @@ export class LinkedInProvider implements SocialProvider {
         body: JSON.stringify(requestBody),
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.id) {
+      const data = await res.json().catch(() => ({}));
+      const postId = data?.id || res.headers.get("x-restli-id");
+      if (!res.ok || !postId) {
         return {
           success: false,
-          errorMessage: data.message || "Failed to publish to LinkedIn",
+          errorMessage: data?.message || `Failed to publish to LinkedIn (HTTP ${res.status})`,
           errorDetails: data,
         };
       }
 
       return {
         success: true,
-        externalPostId: data.id,
-        externalPostUrl: `https://www.linkedin.com/feed/update/${data.id}`,
+        externalPostId: postId,
+        externalPostUrl: `https://www.linkedin.com/feed/update/${postId}`,
       };
     } catch (err: unknown) {
       const error = err as Error;

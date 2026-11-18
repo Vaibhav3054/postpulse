@@ -1,5 +1,5 @@
 import { prisma } from "./prisma";
-import { SUBSCRIPTION_PLANS, QuotaExceededError } from "./quota";
+import { SUBSCRIPTION_PLANS, QuotaExceededError, resolveWorkspacePlan } from "./quota";
 import {
   SocialPlatform,
   MediaType,
@@ -236,23 +236,38 @@ export const db = {
       metadata?: Record<string, unknown>;
       isActive?: boolean;
     }) {
-      const ws = await prisma.workspace.findUnique({
-        where: { id: data.workspaceId },
-        include: { plan: true },
+      const existingAccount = await prisma.socialAccount.findUnique({
+        where: {
+          workspaceId_platform_platformAccountId: {
+            workspaceId: data.workspaceId,
+            platform: data.platform,
+            platformAccountId: data.platformAccountId,
+          },
+        },
+        select: { id: true, isActive: true },
       });
 
-      const currentCount = await prisma.socialAccount.count({
-        where: { workspaceId: data.workspaceId, isActive: true },
-      });
+      // Only enforce social account quota when adding a NEW active seat (not when reconnecting/refreshing an existing active account)
+      if (!existingAccount || !existingAccount.isActive) {
+        const ws = await prisma.workspace.findUnique({
+          where: { id: data.workspaceId },
+          include: { plan: true },
+        });
 
-      const planLimit = ws?.plan?.maxSocialAccounts || 3;
-      if (currentCount >= planLimit) {
-        throw new QuotaExceededError(
-          "social_accounts",
-          planLimit,
-          currentCount,
-          ws?.plan?.code || "free"
-        );
+        const currentCount = await prisma.socialAccount.count({
+          where: { workspaceId: data.workspaceId, isActive: true },
+        });
+
+        const plan = resolveWorkspacePlan(ws?.plan);
+        const planLimit = plan.maxSocialAccounts;
+        if (currentCount >= planLimit) {
+          throw new QuotaExceededError(
+            "social_accounts",
+            planLimit,
+            currentCount,
+            plan.code
+          );
+        }
       }
 
       return prisma.socialAccount.upsert({
