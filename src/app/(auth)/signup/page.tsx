@@ -30,6 +30,7 @@ export default function SignupPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [workspaceName, setWorkspaceName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -45,6 +46,8 @@ export default function SignupPage() {
 
   const passedRulesCount = PASSWORD_RULES.filter((r) => r.test(password)).length;
   const isPasswordStrong = passedRulesCount === PASSWORD_RULES.length;
+  const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
+  const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +55,10 @@ export default function SignupPage() {
       setError(
         "Please create a strong password with at least 8 characters, an uppercase letter, a lowercase letter, a number, and a symbol."
       );
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match. Please re-enter the same password.");
       return;
     }
     setLoading(true);
@@ -310,9 +317,46 @@ export default function SignupPage() {
                 </div>
               </div>
 
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-zinc-300">
+                    Confirm Password
+                  </label>
+                  {passwordsMatch && (
+                    <span className="text-[10px] font-semibold text-emerald-400">
+                      Passwords match
+                    </span>
+                  )}
+                  {passwordsMismatch && (
+                    <span className="text-[10px] font-semibold text-rose-400">
+                      Passwords do not match
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={8}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter your password"
+                    autoComplete="new-password"
+                    className={`w-full pl-10 pr-3 py-2.5 text-xs bg-zinc-950 border rounded-xl focus:outline-none focus:ring-2 text-white placeholder:text-zinc-600 transition-all ${
+                      passwordsMismatch
+                        ? "border-rose-600 focus:ring-rose-500/40 focus:border-rose-500"
+                        : passwordsMatch
+                          ? "border-emerald-600/80 focus:ring-emerald-500/40 focus:border-emerald-500"
+                          : "border-zinc-800 focus:ring-indigo-500/50 focus:border-indigo-500"
+                    }`}
+                  />
+                </div>
+              </div>
+
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || passwordsMismatch}
                 className="w-full flex items-center justify-center gap-2 py-3 px-4 text-xs font-semibold rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] disabled:opacity-50 shadow-lg shadow-indigo-600/30 transition-all mt-4 cursor-pointer"
               >
                 <span>{loading ? "Creating your workspace..." : "Create Account & Workspace"}</span>
