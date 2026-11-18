@@ -13,9 +13,11 @@ import {
   RefreshCw,
   FlaskConical,
   KeyRound,
+  Clock,
 } from "lucide-react";
 import { SocialPlatformType } from "@/lib/social-providers/types";
 import type { ProviderIntegrationStatus } from "@/lib/social-providers/oauth-service";
+import type { PlatformAvailability } from "@/lib/platform-flags";
 
 interface SocialAccountItem {
   id: string;
@@ -36,6 +38,7 @@ interface SocialAccountsManagerProps {
   workspaceSlug: string;
   maxSocialAccounts?: number;
   providerStatuses?: Record<SocialPlatformType, ProviderIntegrationStatus>;
+  platformAvailability?: Record<SocialPlatformType, PlatformAvailability>;
 }
 
 export function SocialAccountsManager({
@@ -43,6 +46,7 @@ export function SocialAccountsManager({
   workspaceId,
   maxSocialAccounts = 6,
   providerStatuses,
+  platformAvailability,
 }: SocialAccountsManagerProps) {
   const router = useRouter();
   const [accounts, setAccounts] = useState<SocialAccountItem[]>(initialAccounts);
@@ -264,16 +268,26 @@ export function SocialAccountsManager({
           const connectedForPlatform = accounts.filter((a) => a.platform === p.platform);
           const status = providerStatuses?.[p.platform];
           const isLive = status?.mode === "live";
+          const avail = platformAvailability?.[p.platform];
+          const isComingSoon = avail?.isComingSoon === true;
+          const canConnect = avail ? avail.canConnect : true;
+          const isAdminBypass = avail?.adminPreviewBypass === true;
 
           return (
             <div
               key={p.platform}
-              className="p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm space-y-4"
+              className={`p-5 rounded-xl border shadow-sm space-y-4 transition-opacity ${
+                isComingSoon && !canConnect
+                  ? "border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/60 opacity-90"
+                  : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900"
+              }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 shadow-sm ${p.badgeColor}`}
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 shadow-sm ${p.badgeColor} ${
+                      isComingSoon && !canConnect ? "opacity-75" : ""
+                    }`}
                   >
                     {p.platform[0]}
                   </div>
@@ -282,32 +296,59 @@ export function SocialAccountsManager({
                       <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">
                         {p.name}
                       </h3>
-                      <span
-                        className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                          isLive
-                            ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400"
-                            : "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300"
-                        }`}
-                      >
-                        {isLive ? "Live OAuth" : "Sandbox"}
-                      </span>
+                      {isComingSoon && !canConnect ? (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/70">
+                          Coming Soon
+                        </span>
+                      ) : (
+                        <>
+                          <span
+                            className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                              isLive
+                                ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400"
+                                : "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300"
+                            }`}
+                          >
+                            {isLive ? "Live OAuth" : "Sandbox"}
+                          </span>
+                          {isAdminBypass && (
+                            <span
+                              title="Disabled for public users (shows Coming Soon). Enabled for you via Super Admin Bypass."
+                              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300"
+                            >
+                              Coming Soon · Admin Preview
+                            </span>
+                          )}
+                        </>
+                      )}
                     </div>
                     <p className="text-xs text-zinc-500 line-clamp-1">{p.tagline}</p>
                   </div>
                 </div>
 
-                <button
-                  onClick={() => handleConnect(p.platform)}
-                  disabled={connectingPlatform === p.platform}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 bg-zinc-50 dark:bg-zinc-800/80 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 transition-colors shrink-0"
-                >
-                  {connectingPlatform === p.platform ? (
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Plus className="w-3.5 h-3.5" />
-                  )}
-                  <span>{isLive ? "Connect" : "Connect Sandbox"}</span>
-                </button>
+                {isComingSoon && !canConnect ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800/60 rounded-lg border border-zinc-200 dark:border-zinc-700/80 cursor-not-allowed shrink-0"
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Coming Soon</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleConnect(p.platform)}
+                    disabled={connectingPlatform === p.platform}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-indigo-400 bg-zinc-50 dark:bg-zinc-800/80 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 transition-colors shrink-0"
+                  >
+                    {connectingPlatform === p.platform ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Plus className="w-3.5 h-3.5" />
+                    )}
+                    <span>{isLive ? "Connect" : "Connect Sandbox"}</span>
+                  </button>
+                )}
               </div>
 
               {/* Connected accounts for this platform */}

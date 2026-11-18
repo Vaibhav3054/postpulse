@@ -12,6 +12,7 @@ import {
   RefreshCw,
   ExternalLink,
   FlaskConical,
+  Clock,
 } from "lucide-react";
 import { GoogleBusinessManager } from "./GoogleBusinessManager";
 import { FacebookPageManager } from "./FacebookPageManager";
@@ -19,6 +20,7 @@ import { InstagramProfileView } from "./InstagramProfileView";
 import { LinkedInOrganizationView } from "./LinkedInOrganizationView";
 import { SocialPlatformType } from "@/lib/social-providers/types";
 import type { ProviderIntegrationStatus } from "@/lib/social-providers/oauth-service";
+import type { PlatformAvailability } from "@/lib/platform-flags";
 
 interface SocialAccountItem {
   id: string;
@@ -47,6 +49,7 @@ interface AccountManagementViewProps {
   gbpLocation: any | null;
   logs: ActivityLogItem[];
   providerStatuses?: Record<SocialPlatformType, ProviderIntegrationStatus>;
+  platformAvailability?: Record<SocialPlatformType, PlatformAvailability>;
 }
 
 export function AccountManagementView({
@@ -57,9 +60,12 @@ export function AccountManagementView({
   gbpLocation,
   logs,
   providerStatuses,
+  platformAvailability,
 }: AccountManagementViewProps) {
   const [selectedPlatform, setSelectedPlatform] = useState<SocialPlatformType>("GOOGLE_BUSINESS");
   const isSelectedLive = providerStatuses?.[selectedPlatform]?.mode === "live";
+  const selectedAvail = platformAvailability?.[selectedPlatform];
+  const isSelectedComingSoon = Boolean(selectedAvail?.isComingSoon && !selectedAvail?.canConnect);
 
   const gbpAccount = accounts.find((a) => a.platform === "GOOGLE_BUSINESS");
   const fbAccount = accounts.find((a) => a.platform === "FACEBOOK");
@@ -136,6 +142,8 @@ export function AccountManagementView({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {platformTabs.map((tab) => {
           const isSelected = selectedPlatform === tab.platform;
+          const tabAvail = platformAvailability?.[tab.platform];
+          const tabComingSoon = Boolean(tabAvail?.isComingSoon && !tabAvail?.canConnect);
 
           return (
             <button
@@ -150,7 +158,9 @@ export function AccountManagementView({
             >
               <div className="flex items-start justify-between gap-2">
                 <div
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 shadow-sm ${tab.bg}`}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 shadow-sm ${tab.bg} ${
+                    tabComingSoon && !tab.isConnected ? "opacity-75" : ""
+                  }`}
                 >
                   {tab.icon}
                 </div>
@@ -158,6 +168,10 @@ export function AccountManagementView({
                   <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
                     <CheckCircle2 className="w-3 h-3" />
                     <span>Active</span>
+                  </span>
+                ) : tabComingSoon ? (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300">
+                    Coming Soon
                   </span>
                 ) : (
                   <span className="text-[10px] text-zinc-400">Offline</span>
@@ -169,7 +183,7 @@ export function AccountManagementView({
                   {tab.name}
                 </div>
                 <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-1">
-                  {tab.accountDisplayName || "Not connected"}
+                  {tab.accountDisplayName || (tabComingSoon ? "Launching shortly" : "Not connected")}
                 </div>
               </div>
             </button>
@@ -179,8 +193,31 @@ export function AccountManagementView({
 
       {/* ACTIVE TAB CONTENT */}
       <div className="pt-2 w-full max-w-full min-w-0">
+        {isSelectedComingSoon &&
+          !(
+            (selectedPlatform === "GOOGLE_BUSINESS" && gbpAccount && gbpLocation) ||
+            (selectedPlatform === "FACEBOOK" && fbAccount) ||
+            (selectedPlatform === "INSTAGRAM" && igAccount) ||
+            (selectedPlatform === "LINKEDIN" && liAccount)
+          ) && (
+            <div className="p-12 text-center rounded-2xl border border-dashed border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/30 dark:bg-indigo-950/20 space-y-3">
+              <div className="w-11 h-11 rounded-2xl bg-indigo-100 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                Coming Soon
+              </div>
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">
+                {platformTabs.find((t) => t.platform === selectedPlatform)?.name} Integration Is Launching Shortly
+              </h3>
+              <p className="text-xs text-zinc-500 max-w-md mx-auto">
+                We are finalizing official API certification for this channel. It will become available to connect right here as soon as it opens.
+              </p>
+            </div>
+          )}
+
         {/* GOOGLE BUSINESS PROFILE */}
-        {selectedPlatform === "GOOGLE_BUSINESS" && (
+        {selectedPlatform === "GOOGLE_BUSINESS" && (!isSelectedComingSoon || (gbpAccount && gbpLocation)) && (
           <>
             {gbpAccount && gbpLocation ? (
               <GoogleBusinessManager
@@ -212,7 +249,7 @@ export function AccountManagementView({
         )}
 
         {/* FACEBOOK PAGES */}
-        {selectedPlatform === "FACEBOOK" && (
+        {selectedPlatform === "FACEBOOK" && (!isSelectedComingSoon || fbAccount) && (
           <>
             {fbAccount ? (
               <FacebookPageManager account={fbAccount} workspaceId={workspaceId} />
@@ -240,7 +277,7 @@ export function AccountManagementView({
         )}
 
         {/* INSTAGRAM PROFESSIONAL */}
-        {selectedPlatform === "INSTAGRAM" && (
+        {selectedPlatform === "INSTAGRAM" && (!isSelectedComingSoon || igAccount) && (
           <>
             {igAccount ? (
               <InstagramProfileView account={igAccount} />
@@ -268,7 +305,7 @@ export function AccountManagementView({
         )}
 
         {/* LINKEDIN */}
-        {selectedPlatform === "LINKEDIN" && (
+        {selectedPlatform === "LINKEDIN" && (!isSelectedComingSoon || liAccount) && (
           <>
             {liAccount ? (
               <LinkedInOrganizationView account={liAccount} />

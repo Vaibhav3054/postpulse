@@ -4,6 +4,7 @@ import { Header } from "@/components/layout/Header";
 import { AccountManagementView } from "@/components/account-management/AccountManagementView";
 import { GoogleBusinessManagementService } from "@/lib/account-management/google-business.service";
 import { getAllProviderStatuses } from "@/lib/social-providers/oauth-service";
+import { getSocialPlatformFlags, resolvePlatformAvailability } from "@/lib/platform-flags";
 
 export default async function AccountManagementPage({
   params,
@@ -11,10 +12,14 @@ export default async function AccountManagementPage({
   params: Promise<{ workspaceSlug: string }>;
 }) {
   const { workspaceSlug } = await params;
-  const { workspace } = await requireServerWorkspaceAccess(workspaceSlug);
+  const { user, workspace } = await requireServerWorkspaceAccess(workspaceSlug);
 
-  const accounts = await db.socialAccounts.listForWorkspace(workspace.id);
-  const logs = await db.activity.listForWorkspace(workspace.id, 25);
+  const [accounts, logs, socialFlags] = await Promise.all([
+    db.socialAccounts.listForWorkspace(workspace.id),
+    db.activity.listForWorkspace(workspace.id, 25),
+    getSocialPlatformFlags(),
+  ]);
+  const platformAvailability = resolvePlatformAvailability(socialFlags, user.systemRole);
 
   // If a Google Business Profile account is connected, retrieve or initialize its location profile
   const gbpAccount = accounts.find((a) => a.platform === "GOOGLE_BUSINESS");
@@ -92,6 +97,7 @@ export default async function AccountManagementPage({
         gbpLocation={gbpLocation}
         logs={formattedLogs}
         providerStatuses={getAllProviderStatuses()}
+        platformAvailability={platformAvailability}
       />
     </>
   );

@@ -63,6 +63,7 @@ export function PlatformAdminConsole({ admin }: AdminProps) {
   const [paymentFilter, setPaymentFilter] = useState("ALL");
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [settingsData, setSettingsData] = useState<any>(null);
+  const [savingFlagKey, setSavingFlagKey] = useState<string | null>(null);
 
   // Complimentary grant form state
   const [compUserId, setCompUserId] = useState("");
@@ -133,6 +134,92 @@ export function PlatformAdminConsole({ admin }: AdminProps) {
     await fetch("/api/platform-admin/auth/logout", { method: "POST" });
     router.push("/platform-admin/login");
     router.refresh();
+  };
+
+  const updateSocialPlatformFlags = async (
+    nextFlags: { platforms: Record<string, boolean>; allowSuperAdminBypass: boolean },
+    savingKey: string,
+    reason: string
+  ) => {
+    setSavingFlagKey(savingKey);
+    try {
+      const res = await fetch("/api/platform-admin/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: "social_platform_flags",
+          value: nextFlags,
+          description: "Controls which social media integrations are live for public users vs Coming Soon",
+          reason,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        notify("error", data.error || "Failed to update social platform availability.");
+        return;
+      }
+      setSettingsData((prev: any) =>
+        prev ? { ...prev, socialPlatformFlags: data.socialPlatformFlags || nextFlags } : prev
+      );
+      notify("success", reason);
+    } catch {
+      notify("error", "Network error while saving platform toggle.");
+    } finally {
+      setSavingFlagKey(null);
+    }
+  };
+
+  const handleToggleSocialPlatform = async (platformKey: string, label: string) => {
+    const current = settingsData?.socialPlatformFlags || {
+      platforms: {
+        GOOGLE_BUSINESS: true,
+        FACEBOOK: true,
+        INSTAGRAM: true,
+        LINKEDIN: true,
+        YOUTUBE: true,
+      },
+      allowSuperAdminBypass: true,
+    };
+    const nextEnabled = !(current.platforms?.[platformKey] !== false);
+    const nextFlags = {
+      platforms: {
+        ...current.platforms,
+        [platformKey]: nextEnabled,
+      },
+      allowSuperAdminBypass: current.allowSuperAdminBypass !== false,
+    };
+    await updateSocialPlatformFlags(
+      nextFlags,
+      platformKey,
+      nextEnabled
+        ? `${label} switched ON (Live for public users)`
+        : `${label} switched OFF (Showing "Coming Soon" for public users)`
+    );
+  };
+
+  const handleToggleSuperAdminBypass = async () => {
+    const current = settingsData?.socialPlatformFlags || {
+      platforms: {
+        GOOGLE_BUSINESS: true,
+        FACEBOOK: true,
+        INSTAGRAM: true,
+        LINKEDIN: true,
+        YOUTUBE: true,
+      },
+      allowSuperAdminBypass: true,
+    };
+    const nextBypass = !(current.allowSuperAdminBypass !== false);
+    const nextFlags = {
+      platforms: { ...current.platforms },
+      allowSuperAdminBypass: nextBypass,
+    };
+    await updateSocialPlatformFlags(
+      nextFlags,
+      "SUPERADMIN_BYPASS",
+      nextBypass
+        ? "Super Admin private testing bypass enabled"
+        : "Super Admin private testing bypass disabled"
+    );
   };
 
   const handleToggleUserStatus = async (user: any) => {
@@ -1077,7 +1164,121 @@ export function PlatformAdminConsole({ admin }: AdminProps) {
 
           {/* PLATFORM SETTINGS */}
           {activeTab === "settings" && settingsData?.integrations && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
+              {/* Social Channel Availability Switches */}
+              <div className="p-5 rounded-xl bg-zinc-900 border border-zinc-800 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-sm font-bold text-white">
+                      Social Channel Availability (Public / Coming Soon)
+                    </h2>
+                    <p className="text-xs text-zinc-400 mt-0.5">
+                      Toggle any social platform OFF to immediately show &ldquo;Coming Soon&rdquo; and block new public connections — no redeploy needed.
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-indigo-950/80 text-indigo-300 border border-indigo-800/70 self-start sm:self-auto">
+                    Instant Live Control
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {[
+                    { key: "GOOGLE_BUSINESS", label: "Google Business Profile", hint: "Google Maps & local posts" },
+                    { key: "FACEBOOK", label: "Facebook Pages", hint: "Meta Pages publishing" },
+                    { key: "INSTAGRAM", label: "Instagram Professional", hint: "Meta Creator / Business" },
+                    { key: "LINKEDIN", label: "LinkedIn", hint: "Profiles & Company Pages" },
+                    { key: "YOUTUBE", label: "YouTube Channel", hint: "Videos & Shorts" },
+                  ].map((item) => {
+                    const enabled = settingsData?.socialPlatformFlags?.platforms?.[item.key] !== false;
+                    const oauthStatus = settingsData.integrations.socialProviders?.[item.key];
+                    const busy = savingFlagKey === item.key;
+
+                    return (
+                      <div
+                        key={item.key}
+                        className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 transition-colors ${
+                          enabled
+                            ? "bg-zinc-950/70 border-zinc-800"
+                            : "bg-indigo-950/20 border-indigo-900/50"
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-white truncate">
+                              {item.label}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span
+                              className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                                enabled
+                                  ? "bg-emerald-950 text-emerald-400 border border-emerald-800/70"
+                                  : "bg-indigo-950 text-indigo-300 border border-indigo-800/70"
+                              }`}
+                            >
+                              {enabled ? "Live for Public" : "Coming Soon"}
+                            </span>
+                            <span className="text-[10px] text-zinc-500">
+                              {oauthStatus?.mode === "live" ? "OAuth Live" : "Sandbox"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={enabled}
+                          disabled={busy}
+                          onClick={() => handleToggleSocialPlatform(item.key, item.label)}
+                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus:outline-none disabled:opacity-50 ${
+                            enabled ? "bg-emerald-500" : "bg-zinc-700"
+                          }`}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                              enabled ? "translate-x-5" : "translate-x-0"
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Super Admin Bypass Option */}
+                <div className="pt-3 border-t border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs font-semibold text-zinc-200">
+                      Allow Super Admin Private Testing Bypass
+                    </div>
+                    <p className="text-[11px] text-zinc-400">
+                      When enabled, Super Admin accounts can still connect and test &ldquo;Coming Soon&rdquo; platforms privately while public users see Coming Soon.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={settingsData?.socialPlatformFlags?.allowSuperAdminBypass !== false}
+                    disabled={savingFlagKey === "SUPERADMIN_BYPASS"}
+                    onClick={handleToggleSuperAdminBypass}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors self-start sm:self-auto disabled:opacity-50 ${
+                      settingsData?.socialPlatformFlags?.allowSuperAdminBypass !== false
+                        ? "bg-indigo-500"
+                        : "bg-zinc-700"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                        settingsData?.socialPlatformFlags?.allowSuperAdminBypass !== false
+                          ? "translate-x-5"
+                          : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-5 rounded-xl bg-zinc-900 border border-zinc-800 space-y-3">
                 <h2 className="text-sm font-bold text-white">Infrastructure Readiness</h2>
                 <div className="space-y-2 text-xs">
@@ -1135,6 +1336,7 @@ export function PlatformAdminConsole({ admin }: AdminProps) {
                     </div>
                   ))}
                 </div>
+              </div>
               </div>
             </div>
           )}

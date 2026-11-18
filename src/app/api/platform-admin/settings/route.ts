@@ -7,6 +7,11 @@ import { getRazorpayConfig } from "@/lib/billing/razorpay";
 import { getAllProviderStatuses } from "@/lib/social-providers/oauth-service";
 import { getStorageConfig } from "@/lib/storage";
 import { isEmailProviderConfigured } from "@/lib/notifications";
+import {
+  getSocialPlatformFlags,
+  normalizeSocialPlatformFlags,
+  SOCIAL_PLATFORM_FLAGS_KEY,
+} from "@/lib/platform-flags";
 
 const updateSettingSchema = z.object({
   key: z.string().trim().min(1).max(80),
@@ -26,9 +31,11 @@ export async function GET(req: NextRequest) {
   const rz = getRazorpayConfig();
   const storage = getStorageConfig();
   const social = getAllProviderStatuses();
+  const socialPlatformFlags = await getSocialPlatformFlags();
 
   return NextResponse.json({
     settings,
+    socialPlatformFlags,
     integrations: {
       storage: {
         driver: storage.isSupabaseConfigured ? "supabase_storage" : "unconfigured",
@@ -61,18 +68,20 @@ export async function PATCH(req: NextRequest) {
   if (parsed.error) return parsed.error;
 
   const { key, value, description, reason } = parsed.data;
+  const normalizedValue =
+    key === SOCIAL_PLATFORM_FLAGS_KEY ? normalizeSocialPlatformFlags(value) : value;
   const previous = await prisma.platformSetting.findUnique({ where: { key } });
 
   const updated = await prisma.platformSetting.upsert({
     where: { key },
     update: {
-      value: value as object,
+      value: normalizedValue as object,
       ...(description !== undefined ? { description } : {}),
       updatedByUserId: auth.admin.id,
     },
     create: {
       key,
-      value: value as object,
+      value: normalizedValue as object,
       description: description || null,
       updatedByUserId: auth.admin.id,
     },
@@ -84,10 +93,14 @@ export async function PATCH(req: NextRequest) {
     entityType: "PLATFORM_SETTING",
     entityId: key,
     previousValue: previous?.value ?? null,
-    newValue: value,
+    newValue: normalizedValue,
     reason: reason || `Updated platform setting ${key}`,
     req,
   });
 
-  return NextResponse.json({ success: true, setting: updated });
+  return NextResponse.json({
+    success: true,
+    setting: updated,
+    ...(key === SOCIAL_PLATFORM_FLAGS_KEY ? { socialPlatformFlags: normalizedValue } : {}),
+  });
 }

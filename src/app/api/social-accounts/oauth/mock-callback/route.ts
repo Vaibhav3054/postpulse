@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { getSocialProvider } from "@/lib/social-providers/registry";
 import { SocialPlatformType } from "@/lib/social-providers/types";
 import { encryptToken } from "@/lib/crypto";
+import { getSocialPlatformFlags, resolvePlatformAvailability } from "@/lib/platform-flags";
 
 const VALID_PLATFORMS = new Set<SocialPlatformType>([
   "INSTAGRAM",
@@ -50,6 +51,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       { error: "Forbidden: You do not have permission to connect accounts to this workspace." },
       { status: 403 }
+    );
+  }
+
+  const flags = await getSocialPlatformFlags();
+  const availability = resolvePlatformAvailability(flags, auth.user.systemRole)[platform];
+  if (!availability.canConnect) {
+    return NextResponse.json(
+      {
+        error: "This social media integration is coming soon and is currently disabled.",
+        code: "PLATFORM_COMING_SOON",
+        platform,
+      },
+      { status: 503 }
     );
   }
 

@@ -7,6 +7,7 @@ import {
   getCallbackUriForPlatform,
   getProviderIntegrationStatus,
 } from "@/lib/social-providers/oauth-service";
+import { getSocialPlatformFlags, resolvePlatformAvailability } from "@/lib/platform-flags";
 
 const VALID_PLATFORMS = new Set<SocialPlatformType>([
   "INSTAGRAM",
@@ -40,6 +41,19 @@ export async function GET(req: NextRequest) {
 
   const memberCheck = await requireWorkspaceMember(workspaceId, auth.user.id, ["OWNER", "ADMIN"]);
   if (memberCheck.error) return memberCheck.error;
+
+  const flags = await getSocialPlatformFlags();
+  const availability = resolvePlatformAvailability(flags, auth.user.systemRole)[platform];
+  if (!availability.canConnect) {
+    return NextResponse.json(
+      {
+        error: "This social media integration is coming soon and is not open for connections yet.",
+        code: "PLATFORM_COMING_SOON",
+        platform,
+      },
+      { status: 503 }
+    );
+  }
 
   const status = getProviderIntegrationStatus(platform);
   const redirectUri = getCallbackUriForPlatform(platform, origin);
