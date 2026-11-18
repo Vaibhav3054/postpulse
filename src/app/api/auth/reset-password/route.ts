@@ -3,16 +3,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth";
-import { parseJsonBody } from "@/lib/validation";
+import { parseJsonBody, strongPasswordSchema } from "@/lib/validation";
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from "@/lib/rate-limit";
 import { captureException } from "@/lib/monitoring";
 
 const resetPasswordSchema = z.object({
   token: z.string().trim().min(32, "Invalid reset token.").max(128),
-  password: z
-    .string()
-    .min(8, "New password must be at least 8 characters long.")
-    .max(128, "Password must be 128 characters or fewer."),
+  password: strongPasswordSchema,
 });
 
 function hashResetToken(rawToken: string): string {

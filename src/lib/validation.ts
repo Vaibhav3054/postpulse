@@ -106,6 +106,15 @@ export function parseAndValidateStorageKey(storageKey: string): {
   };
 }
 
+export const strongPasswordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters.")
+  .max(128, "Password must be 128 characters or fewer.")
+  .regex(/[A-Z]/, "Password must include at least one uppercase letter (A-Z).")
+  .regex(/[a-z]/, "Password must include at least one lowercase letter (a-z).")
+  .regex(/[0-9]/, "Password must include at least one number (0-9).")
+  .regex(/[^A-Za-z0-9]/, "Password must include at least one special symbol (e.g. !@#$%).");
+
 export const loginSchema = z.object({
   email: z.string().trim().email("Please enter a valid email address.").max(255),
   password: z.string().min(1, "Password is required.").max(200),
@@ -113,10 +122,7 @@ export const loginSchema = z.object({
 
 export const signupSchema = z.object({
   email: z.string().trim().email("Please enter a valid email address.").max(255),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters.")
-    .max(200),
+  password: strongPasswordSchema,
   fullName: z.string().trim().min(1).max(120).optional(),
   workspaceName: z.string().trim().min(1).max(120).optional(),
 });

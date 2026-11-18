@@ -3,7 +3,15 @@
 import { Suspense, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, ArrowRight, CheckCircle2, Eye, EyeOff, Loader2, Lock, ShieldCheck } from "lucide-react";
+import { AlertCircle, ArrowRight, CheckCircle2, Circle, Eye, EyeOff, Loader2, Lock, ShieldCheck } from "lucide-react";
+
+const PASSWORD_RULES = [
+  { id: "len", label: "8+ chars", test: (p: string) => p.length >= 8 },
+  { id: "upper", label: "Uppercase", test: (p: string) => /[A-Z]/.test(p) },
+  { id: "lower", label: "Lowercase", test: (p: string) => /[a-z]/.test(p) },
+  { id: "num", label: "Number", test: (p: string) => /[0-9]/.test(p) },
+  { id: "sym", label: "Symbol", test: (p: string) => /[^A-Za-z0-9]/.test(p) },
+];
 
 function ResetPasswordContent() {
   const params = useParams<{ token: string }>();
@@ -65,8 +73,10 @@ function ResetPasswordContent() {
     e.preventDefault();
     setError(null);
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters long.");
+    if (!PASSWORD_RULES.every((r) => r.test(password))) {
+      setError(
+        "Password must be at least 8 characters and include uppercase, lowercase, a number, and a special symbol."
+      );
       return;
     }
     if (password !== confirmPassword) {
@@ -163,7 +173,7 @@ function ResetPasswordContent() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                    New Password (min. 8 characters)
+                    New Strong Password
                   </label>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
@@ -184,6 +194,22 @@ function ResetPasswordContent() {
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
+                  </div>
+                  <div className="flex flex-wrap gap-x-2.5 gap-y-1 mt-2">
+                    {PASSWORD_RULES.map((rule) => {
+                      const ok = rule.test(password);
+                      return (
+                        <span
+                          key={rule.id}
+                          className={`inline-flex items-center gap-1 text-[11px] ${
+                            ok ? "text-emerald-400" : "text-zinc-500"
+                          }`}
+                        >
+                          {ok ? <CheckCircle2 className="w-3 h-3" /> : <Circle className="w-3 h-3" />}
+                          <span>{rule.label}</span>
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
 
