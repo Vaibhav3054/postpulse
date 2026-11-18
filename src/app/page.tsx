@@ -220,12 +220,14 @@ export default function LandingPage() {
           <div className="w-5 h-5 rounded bg-indigo-600 flex items-center justify-center text-white font-bold text-[10px]">
             P
           </div>
-          <span>PostPulse © 2026. All rights reserved.</span>
+          <span>PostPulse by Let It Grow © 2026. All rights reserved.</span>
         </div>
-        <div className="flex items-center gap-6 text-zinc-400">
+        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-zinc-400">
+          <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+          <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
+          <Link href="/refund-policy" className="hover:text-white transition-colors">Refund Policy</Link>
           <Link href="/login" className="hover:text-white transition-colors">Sign In</Link>
           <Link href="/signup" className="hover:text-white transition-colors">Register</Link>
-          <span>Official APIs • Zero Web Scraping</span>
         </div>
       </footer>
     </div>
