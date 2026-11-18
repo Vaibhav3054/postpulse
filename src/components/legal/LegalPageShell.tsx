@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
+export const SUPPORT_EMAIL =
+  process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim() || "support@postpulse.io";
+
 interface LegalPageShellProps {
   title: string;
   subtitle: string;
@@ -95,7 +98,7 @@ export function LegalPageShell({
               Refund Policy
             </Link>
             <a
-              href="mailto:vaibhavacharya305@gmail.com"
+              href={`mailto:${SUPPORT_EMAIL}`}
               className="hover:text-white transition-colors"
             >
               Contact Support

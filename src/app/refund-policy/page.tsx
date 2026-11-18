@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { LegalPageShell } from "@/components/legal/LegalPageShell";
+import { LegalPageShell, SUPPORT_EMAIL } from "@/components/legal/LegalPageShell";
 
 export const metadata: Metadata = {
   title: "Cancellation & Refund Policy — PostPulse by Let It Grow",
@@ -79,10 +79,10 @@ export default function RefundPolicyPage() {
         <p>
           To request a refund, email{" "}
           <a
-            href="mailto:vaibhavacharya305@gmail.com?subject=PostPulse%20Refund%20Request"
+            href={`mailto:${SUPPORT_EMAIL}?subject=PostPulse%20Refund%20Request`}
             className="text-indigo-400 hover:underline"
           >
-            vaibhavacharya305@gmail.com
+            {SUPPORT_EMAIL}
           </a>{" "}
           with your registered account email, Razorpay Payment/Subscription ID (visible in{" "}
           <em>Settings → Billing → Payment History</em>), and the reason for your request.
@@ -105,10 +105,10 @@ export default function RefundPolicyPage() {
           <br />
           Email:{" "}
           <a
-            href="mailto:vaibhavacharya305@gmail.com"
+            href={`mailto:${SUPPORT_EMAIL}`}
             className="text-indigo-400 hover:underline"
           >
-            vaibhavacharya305@gmail.com
+            {SUPPORT_EMAIL}
           </a>
         </p>
       </section>

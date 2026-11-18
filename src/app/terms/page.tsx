@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { LegalPageShell } from "@/components/legal/LegalPageShell";
+import { LegalPageShell, SUPPORT_EMAIL } from "@/components/legal/LegalPageShell";
 
 export const metadata: Metadata = {
   title: "Terms of Service — PostPulse by Let It Grow",
@@ -55,10 +55,10 @@ export default function TermsOfServicePage() {
           <li>
             You must promptly notify us at{" "}
             <a
-              href="mailto:vaibhavacharya305@gmail.com"
+              href={`mailto:${SUPPORT_EMAIL}`}
               className="text-indigo-400 hover:underline"
             >
-              vaibhavacharya305@gmail.com
+              {SUPPORT_EMAIL}
             </a>{" "}
             if you suspect unauthorized access to your account.
           </li>
@@ -140,10 +140,10 @@ export default function TermsOfServicePage() {
           These Terms are governed by the laws of India. Any disputes shall be subject to the
           jurisdiction of competent courts in India. Questions may be directed to{" "}
           <a
-            href="mailto:vaibhavacharya305@gmail.com"
+            href={`mailto:${SUPPORT_EMAIL}`}
             className="text-indigo-400 hover:underline"
           >
-            vaibhavacharya305@gmail.com
+            {SUPPORT_EMAIL}
           </a>
           .
         </p>

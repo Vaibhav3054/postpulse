@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { LegalPageShell } from "@/components/legal/LegalPageShell";
+import { LegalPageShell, SUPPORT_EMAIL } from "@/components/legal/LegalPageShell";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — PostPulse by Let It Grow",
@@ -23,10 +23,10 @@ export default function PrivacyPolicyPage() {
           built and operated by <strong className="text-white">Let It Grow</strong>. For privacy
           questions or data requests, contact us at{" "}
           <a
-            href="mailto:vaibhavacharya305@gmail.com"
+            href={`mailto:${SUPPORT_EMAIL}`}
             className="text-indigo-400 hover:underline"
           >
-            vaibhavacharya305@gmail.com
+            {SUPPORT_EMAIL}
           </a>
           .
         </p>
@@ -195,10 +195,10 @@ export default function PrivacyPolicyPage() {
           To request complete deletion of your PostPulse account and all associated personal data
           (including any cached LinkedIn, Google, or Meta data), email{" "}
           <a
-            href="mailto:vaibhavacharya305@gmail.com?subject=PostPulse%20Data%20Deletion%20Request"
+            href={`mailto:${SUPPORT_EMAIL}?subject=PostPulse%20Data%20Deletion%20Request`}
             className="text-indigo-400 hover:underline"
           >
-            vaibhavacharya305@gmail.com
+            {SUPPORT_EMAIL}
           </a>{" "}
           from your registered email address with the subject{" "}
           <code className="px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-200 text-xs">
@@ -216,10 +216,10 @@ export default function PrivacyPolicyPage() {
           <br />
           Email:{" "}
           <a
-            href="mailto:vaibhavacharya305@gmail.com"
+            href={`mailto:${SUPPORT_EMAIL}`}
             className="text-indigo-400 hover:underline"
           >
-            vaibhavacharya305@gmail.com
+            {SUPPORT_EMAIL}
           </a>
         </p>
       </section>
